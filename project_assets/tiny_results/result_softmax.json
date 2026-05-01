@@ -1,8 +1,0 @@
-{
-  "norm": "softmax",
-  "params": 207512704,
-  "best_ppl": 9.598,
-  "time_s": 419.9,
-  "fp8": false,
-  "tau_log": []
-}
