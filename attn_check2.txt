@@ -1,0 +1,29 @@
+Config _attn_implementation: sdpa
+Config use_flash_attn: N/A
+
+  Qwen3ForCausalLM
+  Qwen3Model
+  Embedding
+  ModuleList
+  Qwen3DecoderLayer
+  Qwen3Attention
+  Linear
+  Qwen3RMSNorm
+  Qwen3MLP
+  SiLUActivation
+  Qwen3RotaryEmbedding
+
+Total unique types: 11
+
+--- Looking for attention ---
+model.layers.0.self_attn: Qwen3Attention
+  child: self_attn: Qwen3Attention
+  child: mlp: Qwen3MLP
+  child: input_layernorm: Qwen3RMSNorm
+  child: post_attention_layernorm: Qwen3RMSNorm
+
+--- First decoder layer children ---
+  self_attn: Qwen3Attention
+  mlp: Qwen3MLP
+  input_layernorm: Qwen3RMSNorm
+  post_attention_layernorm: Qwen3RMSNorm

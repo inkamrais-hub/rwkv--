@@ -1,0 +1,40 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.trae/
+
+# Experiment outputs (huge PNGs, keep source code)
+*.png
+*.gif
+*.pt
+*.tar.gz
+
+# Training outputs
+*.log
+results*.json
+phase*.json
+
+# Model cache
+modelscope_cache/
+
+# Project assets (large training data)
+project_assets/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+scripts/hy_config.py
+scripts/autodl_api.py
+
+# Temporary files at root
+attn_check*.txt
+current_instance.json
+
+# But keep these
+!experiments/s_tau_viz.html

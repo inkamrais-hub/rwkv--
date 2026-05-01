@@ -1,0 +1,138 @@
+Loading Qwen3.5-0.8B...
+[patch] s^tau on cuda
+Vocab=248077, GPU=NVIDIA GeForce RTX 3060 Laptop GPU
+
+============================================================
+验证: s^τ τ=1.0 vs softmax
+============================================================
+[patch] s^tau on cuda
+s^τ τ=1.0: <think>
+
+</think>
+
+这是一个非常宏大且深刻的问题。对于“人生
+softmax:   <think>
+
+</think>
+
+人生的意义是一个深刻的哲学命题，不同的人、在不同
+→ ✅ s^1 ≠ softmax (定理成立)
+
+============================================================
+多语言 τ 扫描
+============================================================
+
+[中文]:
+  τ=  1.0 | <think>
+
+</think>
+
+这是一个非常宏大且深刻的问题。回答这个问题没有唯一的“标准答案”，
+  τ=  2.0 | <think>
+
+</think>
+
+人生没有标准答案，但我们可以从多个维度来探寻这个“意义
+  τ=  3.5 | <think>
+
+</think>
+
+这是一个非常经典且深刻的问题。答案并没有唯一的正确答案，因为**答案
+  τ=  5.0 | <think>
+
+</think>
+
+人生的终极意义往往是**模糊且主观的**，因为没有一个标准答案
+  τ= 10.0 | <think>
+
+</think>
+
+人生的意义这真是一个永恒且充满困惑的问题。心理学、哲学、
+
+[中文2]:
+  τ=  1.0 | <think>
+
+</think>
+
+人工智能是计算机与人工智能的结合体，能够利用计算机技术、人工智能理论和
+  τ=  2.0 | <think>
+
+</think>
+
+人工智能（AI）是用于模拟和辅助人类智能的计算机科学技术。
+  τ=  3.5 | <think>
+
+</think>
+
+智能能自主感知、学习和适应，以解决人类难以解决的复杂问题
+  τ=  5.0 | <think>
+
+</think>
+
+人工智能是将计算机的自动执行能力与人类的情感智能相结合，旨在利用
+  τ= 10.0 | <think>
+
+</think>
+
+人工智能是计算机科学领域以模拟人类智能为特征的数字化程序，旨在通过
+
+[English]:
+  τ=  1.0 | <think>
+
+</think>
+
+Because the term "life" is so broad, the answer depends entirely on
+  τ=  2.0 | <think>
+
+</think>
+
+The question of "what is it" is one of the most profound and
+  τ=  3.5 | <think>
+
+</think>
+
+The question of what life is is one of the most profound questions in human
+  τ=  5.0 | <think>
+
+</think>
+
+The concept of "the meaning of life" is one that has persisted across
+  τ= 10.0 | <think>
+
+</think>
+
+The question "What is the meaning of life?" has been debated for thousands
+
+[日本語]:
+  τ=  1.0 | <think>
+
+</think>
+
+人生の意味を明確な定義で捉え直すことは、人生そのものを
+  τ=  2.0 | <think>
+
+</think>
+
+「人生の意味」とは、自分自身や社会、そして将来をどう
+  τ=  3.5 | <think>
+
+</think>
+
+人生の「意味」を語るのは難しいですが、いくつかの視点から
+  τ=  5.0 | <think>
+
+</think>
+
+人生に意味があるのは、**「自分の存在意義を定義し、
+  τ= 10.0 | <think>
+
+</think>
+
+人生の意味は、個人の経験、時代、文化的背景によって異なるため、
+
+============================================================
+Done!
+当 τ 从 1→10: 注意力越来越聚焦于最强特征
+→ 重复/锁定主题是 s^τ 锐化效应的直接表现
+→ 非"破坏", 而是注意力压缩到极少数 token
+============================================================

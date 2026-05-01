@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>s^τ 注意力归一化 — 交互可视化</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #0d1117; color: #c9d1d9;
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px;
+  }
+  h1 {
+    font-size: 1.6em; margin-bottom: 4px;
+    background: linear-gradient(135deg, #58a6ff, #bc8cff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .subtitle { color: #8b949e; font-size: 0.85em; margin-bottom: 20px; }
+  .container {
+    max-width: 1100px; width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .panel {
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 10px; padding: 16px;
+  }
+  .panel.full { grid-column: 1 / -1; }
+  .panel h3 {
+    font-size: 0.95em; margin-bottom: 12px;
+    color: #58a6ff; border-bottom: 1px solid #21262d; padding-bottom: 6px;
+  }
+  canvas { width: 100%; border-radius: 6px; }
+  .controls { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+  .slider-group label {
+    display: flex; justify-content: space-between;
+    font-size: 0.85em; color: #8b949e;
+  }
+  .slider-group label span.val {
+    color: #58a6ff; font-weight: bold; font-family: monospace; font-size: 1.05em;
+  }
+  input[type=range] {
+    width: 100%; accent-color: #58a6ff;
+  }
+  .score-inputs {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+  }
+  .score-inputs input {
+    width: 62px; padding: 4px 6px; text-align: center;
+    background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+    color: #c9d1d9; font-family: monospace; font-size: 0.85em;
+  }
+  .score-inputs input:focus { outline: none; border-color: #58a6ff; }
+  .btn-row { display: flex; gap: 8px; margin-top: 4px; }
+  button {
+    padding: 6px 14px; border: 1px solid #30363d; border-radius: 6px;
+    background: #21262d; color: #c9d1d9; cursor: pointer; font-size: 0.82em;
+    transition: all 0.15s;
+  }
+  button:hover { background: #30363d; border-color: #58a6ff; }
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; font-size: 0.82em;
+  }
+  .info-item {
+    background: #0d1117; border-radius: 6px; padding: 8px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .info-item .label { color: #8b949e; }
+  .info-item .value { color: #58a6ff; font-family: monospace; font-weight: bold; }
+  .formula-box {
+    background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+    padding: 12px 16px; margin-top: 10px;
+    font-family: 'Courier New', monospace; font-size: 0.82em;
+    color: #8b949e; text-align: center; line-height: 1.8;
+  }
+  .formula-box .hl { color: #58a6ff; }
+  .formula-box .hl2 { color: #d2a8ff; }
+  .formula-box .hl3 { color: #7ee787; }
+  .preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .preset {
+    padding: 3px 10px; border-radius: 12px; font-size: 0.75em;
+    background: #21262d; color: #8b949e; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.15s;
+  }
+  .preset:hover { border-color: #58a6ff; color: #58a6ff; }
+  .preset.active { background: #1f2a44; border-color: #58a6ff; color: #58a6ff; }
+</style>
+</head>
+<body>
+
+<h1>s<sup>τ</sup> 注意力归一化 — 交互可视化</h1>
+<p class="subtitle">a<sub>i</sub> = clamp(s<sub>i</sub>, ε)<sup>τ</sup> / Σ clamp(s<sub>j</sub>, ε)<sup>τ</sup></p>
+
+<div class="container">
+
+  <!-- LEFT: s^τ -->
+  <div class="panel">
+    <h3>📐 s<sup>τ</sup> 归一化</h3>
+    <canvas id="stauCanvas" height="260"></canvas>
+    <div class="info-grid" style="margin-top:8px">
+      <div class="info-item"><span class="label">τ 值</span><span class="value" id="tauVal">1.0</span></div>
+      <div class="info-item"><span class="label">熵 H</span><span class="value" id="stauEntropy">—</span></div>
+      <div class="info-item"><span class="label">最大权重</span><span class="value" id="stauMax">—</span></div>
+      <div class="info-item"><span class="label">有效头数</span><span class="value" id="stauEff">—</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Softmax -->
+  <div class="panel">
+    <h3>🔴 Softmax（对照）</h3>
+    <canvas id="smCanvas" height="260"></canvas>
+    <div class="info-grid" style="margin-top:8px">
+      <div class="info-item"><span class="label">温度</span><span class="value">1.0（固定）</span></div>
+      <div class="info-item"><span class="label">熵 H</span><span class="value" id="smEntropy">—</span></div>
+      <div class="info-item"><span class="label">最大权重</span><span class="value" id="smMax">—</span></div>
+      <div class="info-item"><span class="label">有效头数</span><span class="value" id="smEff">—</span></div>
+    </div>
+  </div>
+
+  <!-- FULL: Controls -->
+  <div class="panel full">
+    <h3>🎛️ 控制面板</h3>
+    <div class="controls">
+      <div class="slider-group">
+        <label>τ（幂指数）<span class="val" id="tauDisplay">1.00</span></label>
+        <input type="range" id="tauSlider" min="0.1" max="20" step="0.05" value="1.0">
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:0.7em; color:#484f58;">
+        <span>← 均匀 (τ→0)</span><span>L1 (τ=1)</span><span>尖锐 (τ→∞) →</span>
+      </div>
+      <div style="margin-top:4px;">
+        <span style="font-size:0.82em; color:#8b949e;">注意力分数（可编辑）：</span>
+        <div class="score-inputs" id="scoreInputs"></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <button onclick="randomizeScores()">🎲 随机分数</button>
+        <button onclick="resetScores()">↺ 默认分数</button>
+        <span style="font-size:0.75em; color:#8b949e;">预设分布：</span>
+        <div class="preset-row">
+          <span class="preset active" onclick="setPreset('flat')">平坦</span>
+          <span class="preset" onclick="setPreset('onehot')">独热</span>
+          <span class="preset" onclick="setPreset('twohot')">双峰</span>
+          <span class="preset" onclick="setPreset('noisy')">噪声</span>
+          <span class="preset" onclick="setPreset('gradient')">梯度</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL: Equivalence -->
+  <div class="panel full">
+    <h3>📝 等价定理：s<sup>τ</sup>(s) ≡ softmax(τ · log(clamp(s, ε)))</h3>
+    <div class="formula-box">
+      <span class="hl">s<sup>τ</sup></span> 归一化是一种<span class="hl2">幂律注意力</span>，<br>
+      与 <span class="hl">softmax</span>（指数律注意力）形成<span class="hl3">双向解析映射</span>：<br><br>
+      s<sup>τ</sup>(s) = <span class="hl">softmax</span>(τ · log(clamp(s, ε)))<br>
+      <span class="hl">softmax</span>(s) = s<sup>∞</sup>(<span class="hl2">e<sup>s</sup></span>)  （极限意义）<br><br>
+      <span style="font-size:0.75em; color:#484f58;">
+      τ 越小 → 权重越均匀 → 信息整合 | τ 越大 → 权重越尖锐 → 精准聚焦
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const colors = ['#58a6ff','#3fb950','#d2a8ff','#f78166','#ffa657',
+                '#7ee787','#a5d6ff','#ff7b72','#f0c6c6','#d2a8ff'];
+const EPS = 1e-8;
+
+let scores = [0.5, 2.0, -1.5, 4.0, 0.0, -0.8, 3.2, -2.0, 1.5, 0.3];
+let tau = 1.0;
+let currentPreset = 'flat';
+
+const stauCanvas = document.getElementById('stauCanvas');
+const smCanvas = document.getElementById('smCanvas');
+const stauCtx = stauCanvas.getContext('2d');
+const smCtx = smCanvas.getContext('2d');
+
+const scoreInputs = document.getElementById('scoreInputs');
+const tauSlider = document.getElementById('tauSlider');
+const tauDisplay = document.getElementById('tauDisplay');
+
+function buildScoreInputs() {
+  scoreInputs.innerHTML = '';
+  scores.forEach((s, i) => {
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.step = '0.1';
+    inp.value = s; inp.title = `score[${i}]`;
+    inp.addEventListener('input', () => {
+      scores[i] = parseFloat(inp.value) || 0;
+      updateAll();
+    });
+    scoreInputs.appendChild(inp);
+  });
+}
+
+function clamp(x) { return Math.max(x, EPS); }
+
+function stauNorm(scores, tau) {
+  const clamped = scores.map(clamp);
+  const powered = clamped.map(c => Math.pow(c, tau));
+  const sum = powered.reduce((a, b) => a + b, 0);
+  return powered.map(p => p / sum);
+}
+
+function softmax(scores, temp = 1.0) {
+  const maxS = Math.max(...scores);
+  const exps = scores.map(s => Math.exp((s - maxS) / temp));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return exps.map(e => e / sum);
+}
+
+function entropy(probs) {
+  return -probs.reduce((h, p) => h + (p > 0 ? p * Math.log2(p) : 0), 0);
+}
+
+function effectiveHeads(probs) {
+  const sumSq = probs.reduce((s, p) => s + p * p, 0);
+  return sumSq > 0 ? 1 / sumSq : 0;
+}
+
+function drawBars(ctx, canvas, probs, label, highlightIdx) {
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = canvas.height;
+  canvas.width = W;
+  ctx.clearRect(0, 0, W, H);
+
+  const n = probs.length;
+  const barW = Math.max(14, (W - 40) / n - 4);
+  const gap = (W - 40 - n * barW) / (n + 1);
+  const maxH = H - 50;
+  const baseY = H - 20;
+
+  probs.forEach((p, i) => {
+    const x = 20 + gap + i * (barW + gap);
+    const h = p * maxH;
+    const y = baseY - h;
+
+    ctx.fillStyle = colors[i % colors.length];
+    if (highlightIdx !== undefined && i === highlightIdx) {
+      ctx.shadowColor = colors[i % colors.length];
+      ctx.shadowBlur = 8;
+    }
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, h, [4, 4, 0, 0]);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    if (p > 0.08 || n <= 6) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText((p * 100).toFixed(1) + '%', x + barW / 2, y - 4);
+    }
+  });
+
+  ctx.fillStyle = '#484f58';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, W / 2, H - 4);
+}
+
+function updateAll() {
+  tau = parseFloat(tauSlider.value);
+  tauDisplay.textContent = tau.toFixed(2);
+  document.getElementById('tauVal').textContent = tau.toFixed(2);
+
+  const stauProbs = stauNorm(scores, tau);
+  const smProbs = softmax(scores);
+
+  const argmaxStau = stauProbs.indexOf(Math.max(...stauProbs));
+  const argmaxSm = smProbs.indexOf(Math.max(...smProbs));
+
+  drawBars(stauCtx, stauCanvas, stauProbs,
+    `s^τ 归一化 (τ=${tau.toFixed(2)})`, argmaxStau);
+  drawBars(smCtx, smCanvas, smProbs,
+    'Softmax (temp=1.0)', argmaxSm);
+
+  document.getElementById('stauEntropy').textContent = entropy(stauProbs).toFixed(3);
+  document.getElementById('stauMax').textContent = (Math.max(...stauProbs) * 100).toFixed(1) + '%';
+  document.getElementById('stauEff').textContent = effectiveHeads(stauProbs).toFixed(2);
+
+  document.getElementById('smEntropy').textContent = entropy(smProbs).toFixed(3);
+  document.getElementById('smMax').textContent = (Math.max(...smProbs) * 100).toFixed(1) + '%';
+  document.getElementById('smEff').textContent = effectiveHeads(smProbs).toFixed(2);
+}
+
+function randomizeScores() {
+  scores = Array.from({length: 10}, () => +(Math.random() * 10 - 3).toFixed(1));
+  buildScoreInputs();
+  updateAll();
+}
+
+function resetScores() {
+  scores = [0.5, 2.0, -1.5, 4.0, 0.0, -0.8, 3.2, -2.0, 1.5, 0.3];
+  buildScoreInputs();
+  updateAll();
+}
+
+const presets = {
+  flat:    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+  onehot:  [10.0, -5, -5, -5, -5, -5, -5, -5, -5, -5],
+  twohot:  [8.0, 7.5, -3, -3, -3, -3, -3, -3, -3, -3],
+  noisy:   [3.2, 0.5, 4.1, -1.2, 2.8, -0.3, 5.0, 1.1, -2.5, 3.7],
+  gradient: [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+};
+
+function setPreset(name) {
+  currentPreset = name;
+  scores = [...presets[name]];
+  buildScoreInputs();
+  updateAll();
+  document.querySelectorAll('.preset').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.preset').forEach(p => {
+    if (p.textContent.trim() === ({flat:'平坦',onehot:'独热',twohot:'双峰',noisy:'噪声',gradient:'梯度'})[name])
+      p.classList.add('active');
+  });
+}
+
+tauSlider.addEventListener('input', () => {
+  tauDisplay.textContent = parseFloat(tauSlider.value).toFixed(2);
+  updateAll();
+});
+
+// Responsive redraw
+window.addEventListener('resize', updateAll);
+
+// Init
+buildScoreInputs();
+updateAll();
+</script>
+</body>
+</html>

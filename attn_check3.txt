@@ -1,0 +1,5 @@
+eager mode _attn_implementation: eager
+
+Qwen3Attention.forward lines: 41
+
+--- Softmax references in module ---
