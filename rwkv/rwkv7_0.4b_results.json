@@ -1,0 +1,262 @@
+{
+  "model": "RWKV-7-World-0.4B",
+  "layers": 24,
+  "dim": 1024,
+  "vocab": 65536,
+  "heads": 16,
+  "head_size": 64,
+  "base_ppl": 22.60882564990438,
+  "sweep": [
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 0.3,
+      "ppl": 24.59736318655522,
+      "delta_pct": 8.795403916342963
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 0.5,
+      "ppl": 23.508890181670164,
+      "delta_pct": 3.9810317692002384
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 0.7,
+      "ppl": 22.9218735667601,
+      "delta_pct": 1.3846270553952764
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 0.9,
+      "ppl": 22.657620389001856,
+      "delta_pct": 0.21582164351682645
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 1.1,
+      "ppl": 22.603179741271582,
+      "delta_pct": -0.024972144596200122
+    },
+    {
+      "point": "att.w0 (decay base)",
+      "tau": 1.5,
+      "ppl": 22.808856495776176,
+      "delta_pct": 0.884746731074214
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 0.5,
+      "ppl": 29.459051593012934,
+      "delta_pct": 30.298902071180894
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 0.9,
+      "ppl": 21.883973375694218,
+      "delta_pct": -3.206058932181762
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 0.95,
+      "ppl": 22.140833059437142,
+      "delta_pct": -2.0699553250312936
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.05,
+      "ppl": 23.271010402795923,
+      "delta_pct": 2.9288772585777587
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.1,
+      "ppl": 24.123126322964247,
+      "delta_pct": 6.697829849761668
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.5,
+      "ppl": 41.38190399410915,
+      "delta_pct": 83.0342921605226
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 2.0,
+      "ppl": 283.9763950985104,
+      "delta_pct": 1156.0422177421297
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 0.9,
+      "ppl": 21.883968960848186,
+      "delta_pct": -3.206078459273086
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 0.95,
+      "ppl": 22.140821689747227,
+      "delta_pct": -2.0700056137552236
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 1.05,
+      "ppl": 23.271006988493873,
+      "delta_pct": 2.928862156943986
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 1.1,
+      "ppl": 24.12312543813326,
+      "delta_pct": 6.697825936108659
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 0.9,
+      "ppl": 24.45629168563661,
+      "delta_pct": 8.171437403870845
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 0.95,
+      "ppl": 23.174734727962495,
+      "delta_pct": 2.503044991461153
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 1.05,
+      "ppl": 22.434822697479024,
+      "delta_pct": -0.7696240181589895
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 1.1,
+      "ppl": 22.7464036821103,
+      "delta_pct": 0.6085147204737928
+    },
+    {
+      "point": "att.g1",
+      "tau": 0.9,
+      "ppl": 23.39744623689679,
+      "delta_pct": 3.488109463110249
+    },
+    {
+      "point": "att.g1",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.g1",
+      "tau": 1.1,
+      "ppl": 24.801922677819427,
+      "delta_pct": 9.700181079172165
+    },
+    {
+      "point": "att.receptance.weight",
+      "tau": 0.9,
+      "ppl": 21.883975382442703,
+      "delta_pct": -3.2060500562298846
+    },
+    {
+      "point": "att.receptance.weight",
+      "tau": 1.0,
+      "ppl": 22.60882564990438,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.receptance.weight",
+      "tau": 1.1,
+      "ppl": 24.12311835948655,
+      "delta_pct": 6.69779462688977
+    },
+    {
+      "point": "w0=0.5",
+      "tau": "combo",
+      "ppl": 23.508890181670164,
+      "delta_pct": 3.9810317692002384
+    },
+    {
+      "point": "key=1.5",
+      "tau": "combo",
+      "ppl": 41.38190399410915,
+      "delta_pct": 83.0342921605226
+    },
+    {
+      "point": "key=2.0",
+      "tau": "combo",
+      "ppl": 283.9763950985104,
+      "delta_pct": 1156.0422177421297
+    },
+    {
+      "point": "w0=0.5+key=1.5",
+      "tau": "combo",
+      "ppl": 42.03845418324607,
+      "delta_pct": 85.93824745348445
+    },
+    {
+      "point": "w0=0.5+key=2.0",
+      "tau": "combo",
+      "ppl": 272.86607193731976,
+      "delta_pct": 1106.9006863188129
+    },
+    {
+      "point": "w0=0.7+key=1.5",
+      "tau": "combo",
+      "ppl": 41.33538970246786,
+      "delta_pct": 82.82855705352694
+    },
+    {
+      "point": "w0=0.7+val=0.95",
+      "tau": "combo",
+      "ppl": 22.487772326355852,
+      "delta_pct": -0.5354250832087711
+    }
+  ],
+  "generation": {
+    "The future of artificial intelligence": {
+      "Baseline": "�",
+      "w0=0.5": "The future of artificial intelligence remains uncertain. We must remember that AI is still in the early stages of development and there may be many roadblocks to overcome. However, if we can overcome the obstacles, we may one day have",
+      "w0=0.7": "The future of artificial intelligence is not clear, but experts say it is clear that the field is moving rapidly. As an engineer, I am pleased with the progress we are making in this field.\nWe are also working on",
+      "key=1.5": "The future of artificial intelligence is to be created to help make it happen. Artificial intelligence isn’t something that we can just make for tomorrow, it is something that we need to use for today.\nWe need the future of",
+      "w0=0.5+key=1.5": "The future of artificial intelligence is to be created to help make it happen.\n\n\nIf you're wondering, \"What's the first of what's the next?\" then you should be able to ask for a definition of their."
+    },
+    "In a distant galaxy,": {
+      "Baseline": "In a distant galaxy, a dying star created a black hole. After the supernova explosion, the black hole produced an enormous amount of ultraviolet radiation, which had a profound effect on the environment.\nIn a galaxy far away",
+      "w0=0.5": "In a distant galaxy, a dying star created a cloud of gas that was destined to become the planet, Mercury.\nMercury is one of the inner planets of the solar system and the fifth planet from the Sun. It",
+      "w0=0.7": "In a distant galaxy, a dying star created a black hole. After the supernova explosion, the star collapsed into an incredibly dense black hole, which has a mass greater than the mass of all the stars in the universe.",
+      "key=1.5": "In a distant galaxy, they were more common to the \n\"theorist\" than to the \"theories.\" \n\n\n\n188 \n\n\nTHEORIES AND THEORETIFICATION \n\n\nof their own",
+      "w0=0.5+key=1.5": "In a distant galaxy, we can't see to the extent of the cosmos the way to the size of the universe, and we can't see to be a way of the age of God, because of the Godly"
+    },
+    "Scientists have discovered that": {
+      "Baseline": "Scientists have discovered that a tiny particle created to mimic a virus can be used to trick cells into producing a protein that can kill cancerous cells.\nThe study, published in the journal Chemical Science, involved the development of",
+      "w0=0.5": "Scientists have discovered that a tiny particle created to help make a drug more effective can cause cancerous cells to multiply rapidly. Their study is published in the journal Nature Communications.\nResearchers at University of California, San Francisco",
+      "w0=0.7": "Scientists have discovered that a tiny particle created to mimic a virus can be used to trick cells into producing a protein that can be used to create a drug that can kill cancer cells.\nThe protein, a fragment of the",
+      "key=1.5": "Scientists have discovered that they can't always trust the \"best guesses\" the best way to know how to do it, but it may be that a few percent of the best guess is correct. That the best guess",
+      "w0=0.5+key=1.5": "Scientists have discovered that they can be used to help make a person's brain more efficient at handling their own thoughts.\n- The first thing is to be a newbie to know the person who can not the person who"
+    }
+  }
+}

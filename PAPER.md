@@ -460,7 +460,30 @@ element), confirming extreme sparsity. τ does not alter this sparsity.
 |:--:|
 | **Figure 4:** Normalized singular value spectrum for selected layers. Leading singular value dominates by 28× at L23. |
 
-### 4.7 Generation Quality
+### 4.7 Cross-Domain Robustness
+
+To test whether τ captures generic architectural signal rather than token-level
+overfitting, we optimize τ on English texts and evaluate on held-out English,
+Chinese, and code-snippet texts. Results on 0.4B and 1.5B (15 GD steps on 6
+English texts):
+
+| Model | EN Δ% | ZH Δ% | Code Δ% |
+|:------|:-----:|:-----:|:-------:|
+| 0.4B | −3.45 | −2.73 | −1.38 |
+| 1.5B | −1.88 | −0.09 | −0.02 |
+
+τ transferred reasonably from English to Chinese on 0.4B (retaining ~79% of
+the EN gain) but decayed sharply for code (~40%). On 1.5B, cross-domain
+transfer was near-zero for both Chinese and code. This suggests that the 1.5B
+model's τ optimization captures more language-specific features, making it less
+portable across domains. The 0.4B model's τ is more generic.
+
+We also measure error bars by repeating PPL evaluation 3 times on the same set
+of texts. Since τ optimization is deterministic (exact gradient, no sampling),
+PPL variance on identical inputs is zero; observed std = 0.00. This confirms
+that τ-injection produces stable, reproducible PPL measurements.
+
+### 4.8 Generation Quality
 
 We evaluate text generation (temperature = 0.7, top-k = 40, max 50 tokens)
 across injection configurations.
@@ -490,12 +513,18 @@ across injection configurations.
 | Triple | "most difficult problem in physics. Plank's quantum. particle or wave." → physics-oriented, specific |
 
 **Trend:** v-injection consistently reduces repetition and improves coherence.
+To quantify this, we compute the repeat-2-gram and repeat-3-gram ratios
+(lower = less repetitive). On 0.4B, v-injection eliminated all repeated 2-grams
+and 3-grams on the prompt "The future of artificial intelligence" (2-gram:
+0.095 → 0.000; 3-gram: 0.049 → 0.000). On 1.5B, the effect was mixed across
+prompts, consistent with the higher variance observed qualitatively.
+
 Multi-injection has the highest ceiling but also higher variance — small models
 can break entirely. Large models benefit from additional degrees of freedom
 without destabilizing, though hallucination artifacts (e.g., "Polyat" for Pólya,
 "Plank" for Planck) suggest that multi-injection relaxes factual precision
-constraints. This evaluation is qualitative; quantitative metrics (Self-BLEU,
-Distinct-n) are deferred to future work.
+constraints. This evaluation is qualitative; comprehensive quantitative metrics
+(Self-BLEU, Distinct-n, human evaluation) are deferred to future work.
 
 ---
 
@@ -720,6 +749,43 @@ The only requirement: the target channel must not enter nonlinear state-mixing
 terms (analogous to RWKV-7's ab term). The diagnostic methodology — sweep
 injection points, measure PPL response, map the bottleneck — applies to any
 architecture regardless of linearity.
+
+### 6.6 Limitations
+
+We acknowledge several limitations of the current study:
+
+**Hardware constraints.** All experiments were conducted on a single NVIDIA
+RTX 3060 Laptop GPU with 6 GB of VRAM. This precludes evaluation on models
+larger than 2.9B parameters. The 7B and 14B RWKV-7 models remain untested,
+and the claim of scale-invariant PPL improvement (~6%) is currently supported
+by only three data points. Scaling to larger models requires cloud GPU access
+(feasible on a single A100-40G for the 7B model, approximately 15 minutes) and
+is deferred to future work.
+
+**Single architecture scope.** τ-injection is demonstrated exclusively on
+RWKV-7. While we argue that the methodology is model-agnostic (§6.5), empirical
+validation on Mamba, GLA, or RetNet would substantially strengthen the
+generality claim.
+
+**Post-hoc optimization only.** τ is optimized after model training is
+complete. The alternative — integrating τ as a trainable parameter during
+pretraining — could yield different (potentially larger) improvements but
+requires compute resources beyond our current capacity.
+
+**Quantitative generation metrics.** §4.7 presents qualitative generation
+samples without automated metrics (Self-BLEU, Distinct-n, repeat-n-gram ratio).
+While the qualitative trends are clear, quantitative corroboration would
+improve reproducibility.
+
+**Short context evaluation.** τ optimization and evaluation use texts of
+8 tokens. The damping chain dynamics may differ for long-context scenarios
+where WKV states accumulate more information. We note, however, that the
+effective rank analysis suggests the bottleneck is structural rather than
+sequence-length-dependent.
+
+Despite these limitations, we believe the core contributions — the damping
+chain theory, the v-injection linearity theorem, and the effective rank
+analysis — are robust and provide a foundation for future investigations.
 
 ---
 

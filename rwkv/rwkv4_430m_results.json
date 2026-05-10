@@ -1,0 +1,206 @@
+{
+  "model": "RWKV-4-Pile-430M",
+  "layers": 24,
+  "dim": 1024,
+  "vocab": 50277,
+  "base_ppl": 242.97678852887537,
+  "sweep": [
+    {
+      "point": "att.time_decay",
+      "tau": 0.3,
+      "ppl": 107.56234345196677,
+      "delta_pct": -55.73143257707349
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 0.5,
+      "ppl": 118.48333671691458,
+      "delta_pct": -51.2367673330928
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 0.7,
+      "ppl": 171.32647954357043,
+      "delta_pct": -29.48854062115074
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 0.9,
+      "ppl": 193.29026116890486,
+      "delta_pct": -20.4490839066571
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 1.0,
+      "ppl": 242.97678852887537,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 1.1,
+      "ppl": 296.2360513848287,
+      "delta_pct": 21.919485881106713
+    },
+    {
+      "point": "att.time_decay",
+      "tau": 1.3,
+      "ppl": 371.74354976829846,
+      "delta_pct": 52.99549887833028
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 0.9,
+      "ppl": 306.4029234975882,
+      "delta_pct": 26.103783555923997
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 0.95,
+      "ppl": 270.53965263653936,
+      "delta_pct": 11.343825998584393
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.0,
+      "ppl": 242.97678852887537,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.05,
+      "ppl": 219.60384878101104,
+      "delta_pct": -9.619412574089024
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.1,
+      "ppl": 197.28711796333477,
+      "delta_pct": -18.804129745138535
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 1.5,
+      "ppl": 168.0325827566821,
+      "delta_pct": -30.844183193773215
+    },
+    {
+      "point": "att.key.weight",
+      "tau": 2.0,
+      "ppl": 125.00559589851417,
+      "delta_pct": -48.552453649843805
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 0.9,
+      "ppl": 244.8502260156402,
+      "delta_pct": 0.7710355783808498
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 1.0,
+      "ppl": 242.97678852887537,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.value.weight",
+      "tau": 1.1,
+      "ppl": 341.4100894898369,
+      "delta_pct": 40.511400927197485
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 0.9,
+      "ppl": 244.69227332382843,
+      "delta_pct": 0.706028261110706
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 1.0,
+      "ppl": 242.97678852887537,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.output.weight",
+      "tau": 1.1,
+      "ppl": 342.12143851045784,
+      "delta_pct": 40.80416511464432
+    },
+    {
+      "point": "att.time_first",
+      "tau": 0.5,
+      "ppl": 193.07848662850503,
+      "delta_pct": -20.536242248687234
+    },
+    {
+      "point": "att.time_first",
+      "tau": 1.0,
+      "ppl": 242.97678852887537,
+      "delta_pct": 0.0
+    },
+    {
+      "point": "att.time_first",
+      "tau": 1.5,
+      "ppl": 393.02303498188223,
+      "delta_pct": 61.75332522973706
+    },
+    {
+      "point": "decay=0.5",
+      "tau": "combo",
+      "ppl": 118.48333671691458,
+      "delta_pct": -51.2367673330928
+    },
+    {
+      "point": "decay=0.3",
+      "tau": "combo",
+      "ppl": 107.56234345196677,
+      "delta_pct": -55.73143257707349
+    },
+    {
+      "point": "key=2.0",
+      "tau": "combo",
+      "ppl": 125.00559589851417,
+      "delta_pct": -48.552453649843805
+    },
+    {
+      "point": "key=3.0",
+      "tau": "combo",
+      "ppl": 113.04243162367511,
+      "delta_pct": -53.47603682306422
+    },
+    {
+      "point": "decay=0.5+key=2.0",
+      "tau": "combo",
+      "ppl": 86.00297807294606,
+      "delta_pct": -64.60444695410669
+    },
+    {
+      "point": "decay=0.3+key=2.0",
+      "tau": "combo",
+      "ppl": 71.48001960009879,
+      "delta_pct": -70.58154400966407
+    }
+  ],
+  "generation": {
+    "The future of artificial intelligence": {
+      "Baseline": "The future of artificial intelligence of a new\n\n\n...](...](...]( tri is tri\n\n\n+kadnao...](, a s t p\n\nlnd _...](![...]( com\n,\n\nr",
+      "decay=0.5": "The future of artificial intelligence of a new future of that life of the future and?\n![!! trib tri![begin tri tri _heat!![_.!!...]( _ cal tri cal Triple![! tri...]( Trib",
+      "decay=0.3": "The future of artificial intelligence\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "key=2.0": "The future of artificial intelligence of a new\n\n\n\n\nThe first\n\n\n...](====== \n\n\n\n\n\n\n\n\n‐\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "decay=0.5+key=2.0": "The future of artificial intelligence\n\n\n\n\n\n|  | | |? |? | | | | | | | | | | | | | | | | | | | | | | | | | |"
+    },
+    "In a distant galaxy,": {
+      "Baseline": "In a distant galaxy, them.\n\n&|\n\n\n& tri\n\n\nheatrotherother as to, myone.as cal *.--\n\n\n\n _ cal.--.--.--heat as\n\n\n",
+      "decay=0.5": "In a distant galaxy, the one's and of that and of the and and of of![ and of and of and and of and rescal triTri![articbegin.-- admits tri cal tri![ triTri Bald tri triTri",
+      "decay=0.3": "In a distant galaxy, the way.\n\nI think you're better and I think it's a\n\n**\n* *E&nd\n\n*$$1.1.4.1'r",
+      "key=2.0": "In a distant galaxy, the first and the the sex life life of the over life of pros prosheat pros tri compared pros...]( pros pros), pros pros pros pros pros tri tri cal rescal rescal rescal![ pros pros feelings triple",
+      "decay=0.5+key=2.0": "In a distant galaxy, the opposite sex.\n\n|  |\n|\n\n|\n\n|\n\n|\n\n||||||||||||||||||"
+    },
+    "Scientists have discovered that": {
+      "Baseline": "Scientists have discovered that the way specimensh,mec...]( fishpartsart\n\n>...!.!._1st2&1181131![![![![![![![ triple",
+      "decay=0.5": "Scientists have discovered that the way that\n\n\n\n\n\n\nart\n\n...](19000\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "decay=0.3": "Scientists have discovered that the way that our brains does not matter in the way that our brain‐heat blood pros there chprops...](heat tripleTri tri cal fears Mind how Spl cal feelings cal Tripleheat feelings tri feelings triple",
+      "key=2.0": "Scientists have discovered that the way that\n\n*g-two-b\n\nR are a a\n\n. to the a aa t.iim of men are of other and other and as and by of",
+      "decay=0.5+key=2.0": "Scientists have discovered that the way that our brains does not only our brain is brain-...]( our brain _heat pros‐...]( tri canon triple pros‐...]( *...](...]( _ at least a little and?\" - -"
+    }
+  }
+}
