@@ -400,6 +400,10 @@ unlikely. The exact linear gradient ensures clean, noiseless updates at every
 step. The optimum is reached at step 79 (0.4B) and step 57 (1.5B), though
 practically useful improvements are achieved within 10–20 steps (see §6.3).
 
+| ![Figure 2: Cliff curve](rwkv/可视化/图二_断崖曲线.png) |
+|:--:|
+| **Figure 2:** Training vs. validation PPL over 80 gradient descent steps. No overfitting cliff; validation improves monotonically. |
+
 ### 4.5 Internal State Analysis
 
 **Output norm compression.** τ systematically compresses output norms at deep
@@ -447,6 +451,14 @@ not the state's structure. The observed Δ of −0.1 on some deep-layer 99% rank
 
 The Gini coefficient of attention states is 0.95–0.99 (1.0 = all mass in one
 element), confirming extreme sparsity. τ does not alter this sparsity.
+
+| ![Figure 1: Effective rank decay](rwkv/可视化/图一_有效秩随层深变化.png) |
+|:--:|
+| **Figure 1:** Effective rank of WKV state matrices decays monotonically across layers. Three thresholds: 90%, 95%, 99% spectral energy. |
+
+| ![Figure 4: Singular value spectrum](rwkv/可视化/图四_奇异值谱.png) |
+|:--:|
+| **Figure 4:** Normalized singular value spectrum for selected layers. Leading singular value dominates by 28× at L23. |
 
 ### 4.7 Generation Quality
 
