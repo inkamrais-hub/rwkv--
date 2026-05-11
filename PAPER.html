@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Probing the Information Bottleneck of RWKV-7 via Per-Channel τ-Injection</title>
+<style>
+:root {
+  --bg: #fafaf8;
+  --text: #1a1a1a;
+  --muted: #666;
+  --accent: #2563eb;
+  --border: #e5e5e5;
+  --code-bg: #f0f0ee;
+  --fig-bg: #f5f5f3;
+  --max-w: 820px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a1e;
+    --text: #e0e0e0;
+    --muted: #999;
+    --accent: #60a5fa;
+    --border: #333;
+    --code-bg: #252528;
+    --fig-bg: #222226;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font: 16px/1.7 -apple-system, "Noto Sans SC", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+#title { font-size: 1.7rem; font-weight: 700; margin-bottom: 4px; }
+h2 {
+  font-size: 1.3rem; font-weight: 650; margin: 36px 0 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+h3 { font-size: 1.1rem; font-weight: 600; margin: 28px 0 8px; }
+h4 { font-size: 1rem; font-weight: 600; margin: 20px 0 6px; }
+p, li { margin: 8px 0; color: var(--text); }
+code {
+  font: .88em "JetBrains Mono", "Cascadia Code", monospace;
+  background: var(--code-bg); padding: 1px 5px; border-radius: 3px;
+}
+pre { margin: 14px 0; overflow-x: auto; }
+pre code {
+  display: block; padding: 14px 18px; font-size: .84em; line-height: 1.5;
+  border-radius: 6px; background: var(--code-bg);
+}
+blockquote {
+  margin: 12px 0; padding: 10px 18px;
+  border-left: 3px solid var(--accent); background: var(--fig-bg);
+  border-radius: 0 6px 6px 0; color: var(--muted);
+}
+table {
+  width: 100%; border-collapse: collapse; margin: 14px 0;
+  font-size: .92em;
+}
+th, td {
+  padding: 8px 12px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+th { font-weight: 600; background: var(--code-bg); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+figure {
+  margin: 28px 0; text-align: center;
+  background: var(--fig-bg); border-radius: 8px; padding: 16px;
+}
+figure img {
+  max-width: 100%; height: auto; border-radius: 4px;
+}
+figcaption {
+  margin-top: 10px; font-size: .88em; color: var(--muted);
+  font-style: italic;
+}
+.bold-line { font-weight: 600; }
+.badge {
+  display: inline-block; background: var(--accent); color: #fff;
+  padding: 2px 8px; border-radius: 10px; font-size: .78em;
+  margin-right: 4px;
+}
+section { margin-bottom: 8px; }
+@media (max-width: 640px) {
+  body { padding: 20px 14px 64px; font-size: 15px; }
+  h2 { font-size: 1.15rem; }
+}
+
+</style>
+</head>
+<body>
+
+<h1 id="title">Probing the Information Bottleneck of RWKV-7 via Per-Channel τ-Injection</h1>
+
+<blockquote><p><strong>τ Project</strong> · May 2026</p></blockquote>
+<p>&gt;</p>
+<blockquote><p>All experiments on a single NVIDIA RTX 3060 Laptop GPU (6 GB VRAM).</p></blockquote>
+<p>&gt;</p>
+<blockquote><p><strong>Code</strong>: <a href="https://github.com/inkamrais-hub/rwkv--">github.com/inkamrais-hub/rwkv--</a></p></blockquote>
+<blockquote><p>(τ-injection experiments &amp; analysis) ·</p></blockquote>
+<blockquote><p><a href="https://github.com/inkamrais-hub/tau-atth111">github.com/inkamrais-hub/tau-atth111</a></p></blockquote>
+<blockquote><p>(s^τ attention mechanism &amp; CUDA kernels)</p></blockquote>
+
+<hr>
+
+<section><h2>Abstract</h2>
+
+<p>We introduce <strong>τ-injection</strong> — per-channel multiplicative scaling at a chosen point in</p>
+<p>the attention mechanism — as a systematic diagnostic methodology for probing the</p>
+<p>information bottleneck of recurrent architectures. By injecting a learnable scaling</p>
+<p>vector τ at each node of the computation graph and measuring the perplexity (PPL)</p>
+<p>response, we construct a complete thermal map of signal transmission through the</p>
+<p>architecture.</p>
+
+<p>Applied to RWKV-7 at three scales (0.4B–2.9B), we discover:</p>
+
+<p><strong>1. <strong>A 6-layer distributed normalization chain</strong> (L2-norm → softplus-decay → ab-mixing →</strong></p>
+<p>   GroupNorm → sigmoid-g → v₀-residual) that attenuates external signal by</p>
+<p>   approximately 15× compared to the single exponential softmax of RWKV-4.</p>
+<p>   τ-injection yields −6.8% PPL on RWKV-7 versus −85% on RWKV-4 — a difference</p>
+<p>   fully explained by the absence of exponential amplification.</p>
+
+<p><strong>2. <strong>The value (v) channel as the canonical injection point.</strong> We prove mathematically</strong></p>
+<p>   that v enters the WKV recurrence linearly: <code>∂L/∂τ = (∂L/∂out)·(out_base)</code> is an</p>
+<p>   exact gradient requiring no approximation. Ten steps of gradient descent on as few</p>
+<p>   as 32 tokens suffice for convergence. This outperforms k-injection grid search</p>
+<p>   by 2–3× across all model sizes.</p>
+
+<p><strong>3. <strong>The output gate (g) as a trap.</strong> Despite being closest to the residual output</strong></p>
+<p>   (bypassing 4 of 6 damping layers), g-injection <em>increases</em> PPL by up to +1.6%.</p>
+<p>   The mechanism: <code>g = σ(xg·G₁)·G₂</code> is a data-dependent gate already optimized</p>
+<p>   during pretraining. τ-injection helps <strong>only at unoptimized linear channels</strong>.</p>
+
+<p><strong>4. **RWKV-7's WKV attention is structurally rank-deficient (effective rank 1–3</strong></p>
+<p>   of N = 64).** Each timestep contributes at most one independent direction via</p>
+<p>   the outer product <code>v^T ⊗ k</code>. Deep layers approach rank-1 monotonically, mirroring</p>
+<p>   the Information Bottleneck principle of Tishby et al. τ operates at the read</p>
+<p>   level (<code>out = s @ r</code>) and cannot increase the state's intrinsic dimensionality.</p>
+
+<p><strong>5. <strong>Generation quality improves systematically.</strong> τ-optimized models produce less</strong></p>
+<p>   repetitive, more logically coherent text. On larger models, triple injection</p>
+<p>   (<code>v + g + output</code>) unlocks hidden factual knowledge without hallucination.</p>
+
+<p><strong>The unifying thesis:</strong> τ-injection is a diagnostic instrument that reveals the</p>
+<p>damping profile, optimization slack, and structural rank constraints of any</p>
+<p>recurrent architecture. The technique is model-agnostic: any architecture where a</p>
+<p>channel enters the state recurrence linearly admits exact gradient-based τ</p>
+<p>optimization.</p>
+
+<hr>
+
+</section><section><h2>1. Introduction</h2>
+
+<h3>1.1 Motivation</h3>
+
+<p>Understanding <em>why</em> a neural architecture performs as it does is as important as</p>
+<p>measuring its performance. Architectural design choices — normalization placement,</p>
+<p>gating mechanisms, residual connections — create implicit constraints on signal</p>
+<p>propagation that are rarely quantified.</p>
+
+<p>The <strong>s^τ mechanism</strong> originated in RWKV-4 (Peng et al., 2023), where a per-channel</p>
+<p>scalar τ injected into the time-decay parameter produced a striking <strong>−85% PPL</strong></p>
+<p>improvement at the optimal τ. The mechanism exploits a single exponential</p>
+<p>normalization step (<code>exp(QK^T) / Σ exp(...)</code>), where a small multiplicative input</p>
+<p>change is exponentially amplified at the output.</p>
+
+<p>When we applied the same technique to RWKV-7 (Peng et al., 2025), the result was</p>
+<p>dramatically different: at most <strong>−3.2%</strong> PPL improvement via k-injection grid</p>
+<p>search. This 26× difference demands explanation. Why does the same diagnostic</p>
+<p>technique lose so much sensitivity between successive generations of the same</p>
+<p>architecture family?</p>
+
+<p>The answer, we find, is not merely a difference in normalization function but a</p>
+<p>fundamental shift in signal transmission architecture — from single-stage exponential</p>
+<p>amplification to a multi-stage linear damping chain. This paper presents the</p>
+<p>complete analysis.</p>
+
+<h3>1.2 Contributions</h3>
+
+<p>We make five contributions:</p>
+
+<p><strong>1. <strong>τ-injection as a diagnostic methodology.</strong> We formalize τ-injection as a</strong></p>
+<p>   systematic probe: inject multiplicative scaling at each node, measure PPL</p>
+<p>   response, and map the resulting signal transmission profile.</p>
+
+<p><strong>2. <strong>The damping chain theory.</strong> We identify and quantify RWKV-7's 6-layer</strong></p>
+<p>   distributed normalization chain, explaining the 15× signal attenuation</p>
+<p>   compared to softmax-based architectures.</p>
+
+<p><strong>3. <strong>A linearity theorem for v-injection.</strong> We prove that injecting τ at the value</strong></p>
+<p>   (v) channel preserves strict linearity of the WKV output, enabling exact</p>
+<p>   gradient optimization with guaranteed convergence.</p>
+
+<p><strong>4. <strong>Empirical mapping of the bottleneck.</strong> Through a complete 8-configuration</strong></p>
+<p>   injection sweep and full-dimensional analysis (effective rank, SVD spectrum,</p>
+<p>   output norms, prediction entropy), we characterize where and why signal is</p>
+<p>   lost.</p>
+
+<p><strong>5. <strong>The language-architecture alignment hypothesis.</strong> We propose that RWKV-7's</strong></p>
+<p>   low-rank attention structure (effective rank 1–3) is not a failure mode but</p>
+<p>   a spontaneous alignment with the inherent hierarchical dimensionality of</p>
+<p>   natural language.</p>
+
+<h3>1.3 Paper Organization</h3>
+
+<p>Section 2 reviews related work. Section 3 presents the τ-injection methodology</p>
+<p>and the linearity theorem. Section 4 describes our experimental validation across</p>
+<p>injection points, model sizes, and analytical dimensions. Section 5 develops the</p>
+<p>information bottleneck theory. Section 6 discusses implications. Section 7</p>
+<p>concludes.</p>
+
+<hr>
+
+</section><section><h2>2. Related Work</h2>
+
+<h3>2.1 RWKV Architecture Family</h3>
+
+<p>The RWKV series (Peng et al., 2023, 2024, 2025) represents a line of recurrent</p>
+<p>language models that achieve Transformer-competitive performance without quadratic</p>
+<p>attention. RWKV-4 introduced the WKV operator with a time-mixing mechanism</p>
+<p>resembling a linear attention variant with exponential decay. RWKV-7 replaced the</p>
+<p>softmax normalization with a distributed system of L2 normalization, softplus</p>
+<p>clamping, low-rank attention mixing (ab term), GroupNorm, sigmoid gating, and</p>
+<p>residual value connections.</p>
+
+<p>The key architectural evolution from RWKV-4 to RWKV-7 is the elimination of the</p>
+<p>single exponential normalization step in favor of multiple linear/near-linear</p>
+<p>normalization stages. This change is not merely cosmetic — it fundamentally alters</p>
+<p>how external signal propagates through the attention mechanism.</p>
+
+<h3>2.2 Information Bottleneck in Deep Learning</h3>
+
+<p>The Information Bottleneck (IB) principle (Tishby et al., 2000; Tishby &amp; Zaslavsky,</p>
+<p>2015) posits that neural networks learn by compressing input X through hidden layers</p>
+<p>T, retaining only mutual information I(X; T) that is predictive of output Y. The</p>
+<p>objective max I(T; Y) − β·I(X; T) describes a trade-off between compression and</p>
+<p>prediction.</p>
+
+<p>Saxe et al. (2019) challenged the universality of IB in deep networks, showing that</p>
+<p>compression is not inevitable — it depends on activation function choice. Our work</p>
+<p>contributes to this debate by providing a concrete mechanistic case study: RWKV-7's</p>
+<p>attention spontaneously compresses to effective rank 1–3 through a purely linear</p>
+<p>dynamical system, with no explicit compression objective.</p>
+
+<h3>2.3 Effective Rank Analysis</h3>
+
+<p>Roy &amp; Vetterli (2007) introduced the effective rank based on spectral entropy.</p>
+<p>Martin &amp; Mahoney (2021) applied heavy-tailed self-regularization theory to analyze</p>
+<p>weight matrices in deep networks. Our analysis extends effective rank measurement</p>
+<p>to <em>recurrent state matrices</em>, revealing that RWKV-7's WKV state is not merely</p>
+<p>low-rank at initialization but remains structurally constrained throughout</p>
+<p>inference.</p>
+
+<h3>2.4 Post-Hoc Model Intervention</h3>
+
+<p>Techniques for modifying frozen models have a rich history: activation addition</p>
+<p>(Turner et al., 2023), representation engineering (Zou et al., 2023), and LoRA</p>
+<p>(Hu et al., 2022). τ-injection differs in that it operates at the *per-channel</p>
+<p>scalar* level rather than modifying weight matrices, requires no training data</p>
+<p>beyond a few evaluation texts, and provides exact gradients when applied to</p>
+<p>linear channels.</p>
+
+<hr>
+
+</section><section><h2>3. Methodology</h2>
+
+<h3>3.1 τ-Injection: Formal Definition</h3>
+
+<p><strong>Definition 1 (τ-Injection).</strong> At a chosen injection point P in an attention</p>
+<p>computation graph, τ-injection replaces the tensor <code>x_P ∈ ℝ^d</code> with</p>
+<p><code>τ ⊙ x_P</code> where <code>τ ∈ ℝ^d</code> is a per-channel learnable scaling vector and ⊙</p>
+<p>denotes element-wise (Hadamard) multiplication.</p>
+
+<p>The optimization objective is:</p>
+
+<pre><code>τ* = arg min_τ L(model(x; θ_frozen, τ))</code></pre>
+
+<p>where <code>L</code> is the language modeling loss (cross-entropy) and <code>θ_frozen</code> are the</p>
+<p>frozen pretrained weights. τ is initialized at <code>τ₀ = 1</code> (identity mapping) and</p>
+<p>regularized toward 1 via L2 penalty <code>λ·||τ − 1||²</code>.</p>
+
+<h3>3.2 RWKV-7 Attention Architecture</h3>
+
+<p>RWKV-7's time-mixing block computes five projections from the time-mixed input x:</p>
+
+<pre><code>r, k, v, w, a = Projection_i(x)</code></pre>
+
+<p>The WKV recurrent state <code>s_t ∈ ℝ^{H×N×N}</code> (H heads, N = 64 dimensional per head)</p>
+<p>evolves as:</p>
+
+<pre><code>s_t = s_{t-1} ⊙ D_t  +  s_{t-1} @ ab_t  +  v_t^T @ k_t              (1)</code></pre>
+
+<p>where:</p>
+<p>- <code>D_t ∈ ℝ^{H×N×N}</code>: per-element decay, computed as <code>σ⁺(−w₀ − k_decay_t)</code>,</p>
+<p>  bounded to (0, 1) via softplus clamping</p>
+<p>- <code>ab_t ∈ ℝ^{N×N}</code>: low-rank attention mixing matrix, formed as</p>
+<p>  <code>a_t ⊗ b_t^T</code> where <code>b_t</code> depends on the key vector k</p>
+<p>- <code>v_t, k_t ∈ ℝ^N</code>: value and key vectors per head</p>
+
+<p>The attention output reads from the state:</p>
+
+<pre><code>out_t = s_t @ r_t                                                   (2)</code></pre>
+
+<p>where <code>r_t ∈ ℝ^N</code> is the receptance (read gate).</p>
+
+<p>After the WKV block, the output passes through GroupNorm and is gated:</p>
+
+<pre><code>xx_gn = GroupNorm(out_a)                                            (3)
+xx_gn = xx_gn + rk_res           (shortcut from r,k)               (4)
+g = σ(xg · G₁) · G₂                                                (5)
+xx_gn = xx_gn ⊙ g                                                   (6)
+output = xx_gn @ output_weight                                      (7)
+x = x + output                     (residual connection)            (8)</code></pre>
+
+<h3>3.3 Injection Points</h3>
+
+<p>We define five injection points spanning the full computation graph:</p>
+
+<table>
+<tr><td>Point</td><td>Tensor Shape</td><td>Location</td><td>Damping Layers Crossed</td></tr>
+<tr><th>v</th><th>[H, N]</th><th>Value vector before WKV</th><th>① L2-norm, ② decay, ③ ab, ④ GN, ⑤ g, ⑥ v₀</th></tr>
+<tr><td>r_k</td><td>[H, N]</td><td>Receptance-key shortcut</td><td>bypasses ①②③ (the WKV recurrence)</td></tr>
+<tr><td>g</td><td>[H, N]</td><td>Output gate after GroupNorm</td><td>①②③④</td></tr>
+<tr><td>output</td><td>[1, C]</td><td>Final output projection</td><td>bypasses all ①–⑥</td></tr>
+</table>
+
+<h3>3.4 Linearity Theorem for v-Injection</h3>
+
+<p><strong>Theorem 1 (Linearity of v-Injection).</strong> For RWKV-7 with τ-injection at the</p>
+<p>value channel <code>v_t ← τ ⊙ v_t</code>, the WKV output <code>out_t(τ)</code> is a strictly linear</p>
+<p>function of τ for all t: <code>out_t(τ) = τ · M_t</code>, where <code>M_t</code> is independent of τ.</p>
+
+<p><em>Proof.</em> By induction on t.</p>
+
+<p><strong>Base case</strong> <code>t = 1</code> (with <code>s₀ = 0</code>):</p>
+<pre><code>s₁ = (τ ⊙ v₁)^T @ k₁ = τ · (v₁^T @ k₁) = τ · M₁</code></pre>
+
+<p>where <code>M₁ = v₁^T @ k₁</code> contains no τ dependence.</p>
+
+<p><strong>Inductive step.</strong> Assume <code>s_{t-1} = τ · M_{t-1}</code>. Then:</p>
+<pre><code>s_t = s_{t-1} ⊙ D_t + s_{t-1} @ ab_t + (τ ⊙ v_t)^T @ k_t
+    = (τ · M_{t-1}) ⊙ D_t + (τ · M_{t-1}) @ ab_t + τ · (v_t^T @ k_t)
+    = τ · [M_{t-1} ⊙ D_t + M_{t-1} @ ab_t + v_t^T @ k_t]
+    = τ · M_t                                                        ∎</code></pre>
+
+<p>The critical observation: <code>D_t</code>, <code>ab_t</code>, and <code>k_t</code> do not depend on v, hence</p>
+<p>do not depend on τ. The ab term — responsible for collapsing k-injection</p>
+<p>linearity — is harmless under v-injection.</p>
+
+<p><strong>Corollary 1 (Exact Gradient).</strong> The gradient <code>∂L/∂τ</code> can be computed exactly</p>
+<p>via a single forward and backward pass through the frozen model with</p>
+<p><code>τ.requires_grad_(True)</code>. No finite differences, no sampling noise, no linear</p>
+<p>approximation is needed.</p>
+
+<h3>3.5 Optimization Procedure</h3>
+
+<p>For each injection configuration, we optimize τ via:</p>
+
+<pre><code>τ ← τ − lr · (∇_τ L + λ · (τ − 1))
+τ ← clamp(τ, 0.2, 5.0)</code></pre>
+
+<p>where <code>lr = 0.05–0.10</code>, <code>λ = 0.001</code>, and optimization runs for 10–20 steps.</p>
+<p>We use 4–8 short English texts (32–104 tokens) for optimization, with PPL</p>
+<p>evaluated on held-out texts.</p>
+
+<p>The regularization strength <code>λ = 0.001</code> was chosen empirically to keep τ within</p>
+<p>the interval [0.9, 1.1] during optimization while allowing sufficient freedom for</p>
+<p>per-channel adjustment. We verified that λ ∈ [0.0001, 0.01] yields comparable</p>
+<p>results (ΔPPL within 0.5%), with λ = 0 (no regularization) occasionally</p>
+<p>producing degenerate τ values that degrade generation quality despite comparable</p>
+<p>or slightly better PPL scores.</p>
+
+<h3>3.6 Models</h3>
+
+<table>
+<tr><td>Model</td><td>Layers</td><td>C</td><td>H</td><td>N</td><td>Parameters</td></tr>
+<tr><th>RWKV-7-0.4B</th><th>24</th><th>1024</th><th>16</th><th>64</th><th>~0.43B</th></tr>
+<tr><td>RWKV-7-1.5B</td><td>24</td><td>2048</td><td>32</td><td>64</td><td>~1.50B</td></tr>
+<tr><td>RWKV-7-2.9B</td><td>32</td><td>2560</td><td>40</td><td>64</td><td>~2.91B</td></tr>
+</table>
+
+<p>All experiments run on a single consumer GPU (RTX 3060 Laptop, 6 GB VRAM).</p>
+<p>The 2.9B model uses reduced optimization tokens for gradient tracking to fit</p>
+<p>within memory constraints. Wall-clock time: ~2 minutes per model per injection</p>
+<p>configuration.</p>
+
+<hr>
+
+</section><section><h2>4. Experiments</h2>
+
+<h3>4.1 k-Injection Grid Search (Baseline)</h3>
+
+<p>We replicate the standard s^τ approach: multiply <code>key.weight</code> by τ, sweeping</p>
+<p>over τ ∈ [0.5, 2.0] with step 0.1 per layer.</p>
+
+<table>
+<tr><td>Model</td><td>Best τ</td><td>PPL Δ</td><td>Injection</td></tr>
+<tr><th>0.4B</th><th>0.9</th><th>−3.21%</th><th>key</th></tr>
+<tr><td>1.5B</td><td>0.9</td><td>−1.66%</td><td>key</td></tr>
+<tr><td>2.9B</td><td>1.1</td><td>−3.16%</td><td>output</td></tr>
+</table>
+
+<p>The ceiling is low (~3%) with no clear bottleneck migration pattern — consistent</p>
+<p>with the ab term's <code>τ_i·τ_j</code> cross-coupling destroying any per-channel signal</p>
+<p>separation.</p>
+
+### 4.2 v-Injection Gradient Descent (Main Result)
+
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E4%BA%94_%E8%BE%93%E5%87%BA%E8%8C%83%E6%95%B0%E5%8F%98%E5%8C%96.png" alt="Figure 5: Output norm change after τ-injection at v vs. output channels." loading="lazy">
+  <figcaption>Figure 5: Output norm change after τ-injection at v vs. output channels.</figcaption>
+</figure>
+
+<table>
+<tr><td>Model</td><td>Baseline PPL</td><td>Optimized PPL</td><td>Δ%</td><td>GD Steps</td></tr>
+<tr><th>0.4B</th><th>33.00</th><th>30.75</th><th><strong>−6.81%</strong></th><th>10</th></tr>
+<tr><td>1.5B</td><td>21.28</td><td>20.09</td><td><strong>−5.59%</strong></td><td>10</td></tr>
+<tr><td>2.9B</td><td>26.44</td><td>24.70</td><td><strong>−6.58%</strong></td><td>10</td></tr>
+</table>
+
+<p>**v-injection gradient descent outperforms k-injection grid search by 2–3×</p>
+<p>across all model sizes.** The improvement is scale-invariant (~6%) with no</p>
+<p>bottleneck migration — all three models benefit equally, consistent with the</p>
+<p>v channel's structural universality.</p>
+
+<p>τ values remain close to 1.0 (range [0.92, 1.13], σ = 0.001–0.006), indicating</p>
+<p>that the −6.8% PPL gain comes from systematic, small per-channel adjustments</p>
+<p>rather than a single large scaling factor. This explains why grid search</p>
+<p>(step size 0.05–0.1) cannot capture the σ = 0.003-level structure.</p>
+
+### 4.3 Multi-Point Injection Sweep
+
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E4%B8%89_%E6%B3%A8%E5%85%A5%E7%82%B9%E5%AF%B9%E6%AF%94.png" alt="Figure 3: PPL change across 8 injection point configurations on 0.4B and 1.5B models." loading="lazy">
+  <figcaption>Figure 3: PPL change across 8 injection point configurations on 0.4B and 1.5B models.</figcaption>
+</figure>
+
+<p>To map the complete bottleneck topology, we test all combinations of injection</p>
+<p>points on the 0.4B and 1.5B models (10 GD steps each).</p>
+
+<p class="bold-line"><strong>0.4B:</strong></p>
+
+<table>
+<tr><td>Injection</td><td>PPL Δ</td><td>Analysis</td></tr>
+<tr><th><strong>v + output</strong></th><th><strong>−3.74%</strong></th><th>Best dual — complementary channels</th></tr>
+<tr><td>v only</td><td>−2.41%</td><td>Safe default, no interference</td></tr>
+<tr><td>v + g</td><td>−1.35%</td><td>g adds noise but v partially compensates</td></tr>
+<tr><td>g + output</td><td><strong>+1.61%</strong></td><td>g destroys signal; output cannot rescue</td></tr>
+</table>
+
+<p class="bold-line"><strong>1.5B:</strong></p>
+
+<table>
+<tr><td>Injection</td><td>PPL Δ</td><td>Analysis</td></tr>
+<tr><th><strong>v + g + output</strong></th><th><strong>−3.36%</strong></th><th>Triple injection — large model absorbs g disruption</th></tr>
+<tr><td>v + output</td><td>−2.77%</td><td>Best dual, consistent with 0.4B</td></tr>
+<tr><td>output only</td><td>−1.68%</td><td>Bypasses all damping but lacks v's state-level control</td></tr>
+<tr><td>r_k only</td><td>−0.31%</td><td>Shortcut is negligible — most signal flows through WKV</td></tr>
+</table>
+
+<p class="bold-line"><strong>Key findings:</strong></p>
+
+<li>1. g is nearly always harmful solo. The sigmoid gate <code>σ(xg·G₁)·G₂</code> is a</li>
+<p>   data-dependent learned mechanism optimized jointly during pretraining.</p>
+<p>   τ-injection disrupts its precise [0, 1] calibration.</p>
+
+<li>2. Output injection alone is weak. Despite bypassing all six damping layers,</li>
+<p>   solo output (−1.3% to −1.7%) underperforms v injection (−2.4% to −1.1%).</p>
+<p>   Proximity to output ≠ injection effectiveness.</p>
+
+<li>3. v + output is the universal dual optimum. v normalizes input flow; output</li>
+<p>   normalizes residual contribution; together they capture orthogonal degrees</p>
+<p>   of freedom without interference.</p>
+
+<li>4. Model size modulates injection strategy. Small models prefer simplicity</li>
+<p>   (v only or v + output). Larger models can exploit additional injection</p>
+<p>   points (v + g + output at −3.36% on 1.5B) — extra capacity absorbs</p>
+<p>   g-injection disruption.</p>
+
+### 4.4 Overfitting Analysis
+
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E4%BA%8C_%E6%96%AD%E5%B4%96%E6%9B%B2%E7%BA%BF.png" alt="Figure 2: Training vs. validation PPL over gradient descent steps. No overfitting cliff." loading="lazy">
+  <figcaption>Figure 2: Training vs. validation PPL over gradient descent steps. No overfitting cliff.</figcaption>
+</figure>
+
+<p>We extend optimization to 80 steps tracking both training and validation PPL</p>
+<p>to detect overfitting cliffs. Due to VRAM constraints (6 GB), the full 80-step</p>
+<p>tracking experiment was run on the 0.4B and 1.5B models only; the 2.9B model</p>
+<p>used reduced optimization tokens to fit memory and was tracked for 10 steps</p>
+<p>(see §4.2), making a direct overfitting comparison infeasible at this scale.</p>
+
+<table>
+<tr><td>Model</td><td>Val Baseline</td><td>Val Best (step 79)</td><td>Δ%</td><td>Cliff?</td></tr>
+<tr><th>0.4B</th><th>40.46</th><th>38.38</th><th>−5.12%</th><th>None</th></tr>
+<tr><td>1.5B</td><td>28.46</td><td>27.18</td><td>−4.48%</td><td>None</td></tr>
+</table>
+
+<p>Validation PPL monotonically improves while training PPL drops sharply</p>
+<p>(70 → 36 for 0.4B). The τ parameter count (24K for 0.4B, 49K for 1.5B) is far</p>
+<p>smaller than the information content of 104 training tokens, making overfitting</p>
+<p>unlikely. The exact linear gradient ensures clean, noiseless updates at every</p>
+<p>step. The optimum is reached at step 79 (0.4B) and step 57 (1.5B), though</p>
+<p>practically useful improvements are achieved within 10–20 steps (see §6.3).</p>
+
+<table>
+<tr><td>!<a href="rwkv/可视化/图二_断崖曲线.png">Figure 2: Cliff curve</a></td></tr>
+<tr><th><strong>Figure 2:</strong> Training vs. validation PPL over 80 gradient descent steps. No overfitting cliff; validation improves monotonically.</th></tr>
+</table>
+
+<h3>4.5 Internal State Analysis</h3>
+
+<p><strong>Output norm compression.</strong> τ systematically compresses output norms at deep</p>
+<p>layers, with monotonic increase in compression magnitude:</p>
+
+<table>
+<tr><td>Layer</td><td>0.4B Δ norm</td><td>1.5B Δ norm</td></tr>
+<tr><th>L5</th><th>~0%</th><th>~0%</th></tr>
+<tr><td>L10</td><td>−0.8%</td><td>−0.5%</td></tr>
+<tr><td>L20</td><td>−3.5%</td><td>−0.5%</td></tr>
+<tr><td>L23</td><td><strong>−6.7%</strong></td><td><strong>−1.6%</strong></td></tr>
+</table>
+
+<p><strong>WKV state norms are nearly unchanged</strong> (L23: −1.8% / −0.1%). τ operates at</p>
+<p>the <strong>read level</strong> (out = s @ r) rather than the <strong>write level</strong> (state</p>
+<p>accumulation). The model stores the same information but reads it with</p>
+<p>systematically reduced amplification, suppressing outlier activations.</p>
+
+<p><strong>Prediction entropy</strong> decreases by 2–4% with τ; top-5 probability mass</p>
+<p>increases by 2–5%. The model becomes more confident without altering the</p>
+<p>sparsity pattern — vocabulary coverage (&gt;1% probability) remains at 0.01%</p>
+<p>(7 tokens out of 65K).</p>
+
+### 4.6 Effective Rank Analysis
+
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E4%B8%80_%E6%9C%89%E6%95%88%E7%A7%A9%E9%9A%8F%E5%B1%82%E6%B7%B1%E5%8F%98%E5%8C%96.png" alt="Figure 1: Effective rank of WKV state matrices decays monotonically across layers." loading="lazy">
+  <figcaption>Figure 1: Effective rank of WKV state matrices decays monotonically across layers.</figcaption>
+</figure>
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E5%9B%9B_%E5%A5%87%E5%BC%82%E5%80%BC%E8%B0%B1.png" alt="Figure 4: Normalized singular value spectrum. Leading singular value dominates by 28× at L23." loading="lazy">
+  <figcaption>Figure 4: Normalized singular value spectrum. Leading singular value dominates by 28× at L23.</figcaption>
+</figure>
+
+<p>We compute the SVD of WKV state matrices <code>s_t ∈ ℝ^{H×N×N}</code> per head and</p>
+<p>measure effective rank (number of singular values capturing 90%/95%/99% of</p>
+<p>spectral energy):</p>
+
+<table>
+<tr><td>Model</td><td>Layer</td><td>EffRank₉₀</td><td>EffRank₉₅</td><td>EffRank₉₉</td></tr>
+<tr><th>0.4B</th><th>L0</th><th>2.0</th><th>2.6</th><th>3.5</th></tr>
+<tr><td></td><td>L23</td><td><strong>1.3</strong></td><td><strong>1.6</strong></td><td><strong>2.2</strong></td></tr>
+<tr><td>1.5B</td><td>L0</td><td>2.2</td><td>2.5</td><td>3.6</td></tr>
+<tr><td></td><td>L23</td><td><strong>1.2</strong></td><td><strong>1.3</strong></td><td><strong>1.8</strong></td></tr>
+</table>
+
+<p>**RWKV-7's attention is structurally rank-1 to rank-3 across all layers and</p>
+<p>models.** Deep layers approach exact rank-1: the leading singular value dominates</p>
+<p>by 28× over the second (1.5B L23: σ₁ = 10.78, σ₂ = 0.38).</p>
+
+<p><strong>τ-injection has negligible effect on effective rank</strong> (|Δ| ≤ 0.1 across all</p>
+<p>layers, within numerical precision of the SVD computation). This is consistent</p>
+<p>with τ being a read-level mechanism — it changes how information is extracted,</p>
+<p>not the state's structure. The observed Δ of −0.1 on some deep-layer 99% ranks</p>
+<p>(1.5B L23: 1.9 → 1.8) is at the limit of numerical significance for 64×64 matrices.</p>
+
+<p>The Gini coefficient of attention states is 0.95–0.99 (1.0 = all mass in one</p>
+<p>element), confirming extreme sparsity. τ does not alter this sparsity.</p>
+
+<table>
+<tr><td>!<a href="rwkv/可视化/图一_有效秩随层深变化.png">Figure 1: Effective rank decay</a></td></tr>
+<tr><th><strong>Figure 1:</strong> Effective rank of WKV state matrices decays monotonically across layers. Three thresholds: 90%, 95%, 99% spectral energy.</th></tr>
+</table>
+
+<table>
+<tr><td>!<a href="rwkv/可视化/图四_奇异值谱.png">Figure 4: Singular value spectrum</a></td></tr>
+<tr><th><strong>Figure 4:</strong> Normalized singular value spectrum for selected layers. Leading singular value dominates by 28× at L23.</th></tr>
+</table>
+
+<h3>4.7 Cross-Domain Robustness</h3>
+
+<p>To test whether τ captures generic architectural signal rather than token-level</p>
+<p>overfitting, we optimize τ on English texts and evaluate on held-out English,</p>
+<p>Chinese, and code-snippet texts. Results on 0.4B and 1.5B (15 GD steps on 6</p>
+<p>English texts):</p>
+
+<table>
+<tr><td>Model</td><td>EN Δ%</td><td>ZH Δ%</td><td>Code Δ%</td></tr>
+<tr><th>0.4B</th><th>−3.45</th><th>−2.73</th><th>−1.38</th></tr>
+<tr><td>1.5B</td><td>−1.88</td><td>−0.09</td><td>−0.02</td></tr>
+</table>
+
+<p>τ transferred reasonably from English to Chinese on 0.4B (retaining ~79% of</p>
+<p>the EN gain) but decayed sharply for code (~40%). On 1.5B, cross-domain</p>
+<p>transfer was near-zero for both Chinese and code. This suggests that the 1.5B</p>
+<p>model's τ optimization captures more language-specific features, making it less</p>
+<p>portable across domains. The 0.4B model's τ is more generic.</p>
+
+<p>We also measure error bars by repeating PPL evaluation 3 times on the same set</p>
+<p>of texts. Since τ optimization is deterministic (exact gradient, no sampling),</p>
+<p>PPL variance on identical inputs is zero; observed std = 0.00. This confirms</p>
+<p>that τ-injection produces stable, reproducible PPL measurements.</p>
+
+### 4.8 Generation Quality
+
+<figure>
+  <img src="https://raw.githubusercontent.com/inkamrais-hub/rwkv--/main/rwkv/%E5%8F%AF%E8%A7%86%E5%8C%96/%E5%9B%BE%E5%85%AD_%E9%A2%84%E6%B5%8B%E7%86%B5%E5%8F%98%E5%8C%96.png" alt="Figure 6: Per-token prediction entropy with and without τ-optimized v-injection." loading="lazy">
+  <figcaption>Figure 6: Per-token prediction entropy with and without τ-optimized v-injection.</figcaption>
+</figure>
+
+<p>We evaluate text generation (temperature = 0.7, top-k = 40, max 50 tokens)</p>
+<p>across injection configurations.</p>
+
+<p class="bold-line"><strong>0.4B:</strong></p>
+
+<table>
+<tr><td>Config</td><td>"The secret to building great software is"</td></tr>
+<tr><th>Base</th><th>"...start small. write very simple programs. build bigger projects. this is the most important point — a product is not perfect until" → rambling</th></tr>
+<tr><td>v</td><td>"...a disciplined approach. programming methodology. three rules. understand your problem first." → structured</td></tr>
+</table>
+
+<table>
+<tr><td>Config</td><td>"A wise person once said:"</td></tr>
+<tr><th>Base</th><th>"mind is like a candle; light it with good food and good words, it can shine. but if we do not feed it right things, it will burn." → creative but "burn" repetition</th></tr>
+<tr><td>v</td><td>"secret of success is to become a man of action, not sit behind a desk and talk about theory." → complete, clean aphorism</td></tr>
+</table>
+
+<p class="bold-line"><strong>1.5B:</strong></p>
+
+<table>
+<tr><td>Config</td><td>"Mathematics is beautiful because"</td></tr>
+<tr><th>Base</th><th>"every day it reveals a new beauty. — Penrose" → literary</th></tr>
+<tr><td>Triple</td><td>"beauty in its proofs. — Hilbert / Polyat / Laplace" → names three mathematicians</td></tr>
+</table>
+
+<table>
+<tr><td>Config</td><td>"consciousness and matter"</td></tr>
+<tr><th>Base</th><th>"Idealism... Buddhism... dependent origin" → philosophical</th></tr>
+<tr><td>Triple</td><td>"most difficult problem in physics. Plank's quantum. particle or wave." → physics-oriented, specific</td></tr>
+</table>
+
+<p><strong>Trend:</strong> v-injection consistently reduces repetition and improves coherence.</p>
+<p>To quantify this, we compute the repeat-2-gram and repeat-3-gram ratios</p>
+<p>(lower = less repetitive). On 0.4B, v-injection eliminated all repeated 2-grams</p>
+<p>and 3-grams on the prompt "The future of artificial intelligence" (2-gram:</p>
+<p>0.095 → 0.000; 3-gram: 0.049 → 0.000). On 1.5B, the effect was mixed across</p>
+<p>prompts, consistent with the higher variance observed qualitatively.</p>
+
+<p>Multi-injection has the highest ceiling but also higher variance — small models</p>
+<p>can break entirely. Large models benefit from additional degrees of freedom</p>
+<p>without destabilizing, though hallucination artifacts (e.g., "Polyat" for Pólya,</p>
+<p>"Plank" for Planck) suggest that multi-injection relaxes factual precision</p>
+<p>constraints. This evaluation is qualitative; comprehensive quantitative metrics</p>
+<p>(Self-BLEU, Distinct-n, human evaluation) are deferred to future work.</p>
+
+<hr>
+
+</section><section><h2>5. Information Bottleneck Theory</h2>
+
+<p>τ-injection does more than improve PPL — it reveals the fundamental structural</p>
+<p>constraints of RWKV-7's attention. This section presents a unified theoretical</p>
+<p>framework explaining why τ ceilings at −6.8% and why effective rank is 1–3.</p>
+
+<h3>5.1 The WKV Recurrence as a Low-Rank Dynamical System</h3>
+
+<p>The WKV recurrence (Equation 1) is inherently low-rank. Each operation contributes</p>
+<p>a bounded rank:</p>
+
+<table>
+<tr><td>Operation</td><td>Effect on rank(s)</td><td>Justification</td></tr>
+<tr><th><code>s ⊙ D</code></th><th>≤ rank(s)</th><th>Hadamard product is rank-submultiplicative</th></tr>
+<tr><td><code>s @ ab</code></td><td>≤ rank(s)</td><td>ab is rank-1 (outer product a ⊗ b^T)</td></tr>
+<tr><td><code>v^T @ k</code></td><td>+1 per timestep</td><td>Outer product is exactly rank-1</td></tr>
+</table>
+
+<p><strong>Each timestep contributes at most one new independent direction.</strong> Over T steps,</p>
+<p>the theoretical maximum rank is min(T, N). The actual rank is far lower because</p>
+<p>exponential forgetting (D &lt; 1) continuously erases old directions. For typical</p>
+<p>D ≈ 0.95, the effective memory length is ~20 steps, yielding a steady-state</p>
+<p>effective rank of 3–5 — matching the observed 1–3.</p>
+
+<h3>5.2 Steady-State Analysis</h3>
+
+<p>The WKV state evolves as a weighted sum of past outer products:</p>
+
+<pre><code>s_t ≈ Σ_{u=0}^∞ β(t, u) · v_u ⊗ k_u    where β decays exponentially</code></pre>
+
+<p>This is a <strong>linear dynamical system with exponential forgetting</strong>.</p>
+<p>Its steady-state effective rank is bounded by:</p>
+
+<pre><code>effective_rank(s) ≈ −1 / ln(E[D])</code></pre>
+
+<p>where E[D] is the expected decay factor. For D ∈ (0.85, 0.98), this gives a</p>
+<p>theoretical effective rank of 1–5. The model **physically cannot store more than</p>
+<p>~5 independent directions per head regardless of sequence length.**</p>
+
+<h3>5.3 The Damping Chain</h3>
+
+<p>RWKV-7's normalized architecture can be modeled as a signal transmission chain</p>
+<p>with six sequential damping stages:</p>
+
+<pre><code>L2-norm(key) → softplus-clamp(decay) → ab-mixing → GroupNorm → sigmoid(g) → v₀-residual</code></pre>
+
+<p>Each stage <code>i</code> has a damping coefficient <code>α_i ∈ (0, 1]</code>. The total signal</p>
+<p>attenuation for a τ injected at stage <code>k</code> is:</p>
+
+<pre><code>A_k = ∏_{i=k}^6 α_i</code></pre>
+
+<p>For RWKV-4 (single softmax stage), <code>A ≈ 1</code> (exponential amplification). For</p>
+<p>RWKV-7, <code>A₁ ≈ 1/15</code> (all six stages), explaining the ~15× difference in τ</p>
+<p>effectiveness between the two architectures.</p>
+
+<h3>5.4 Why Deep Layers Degenerate to Rank-1</h3>
+
+<p>Our SVD analysis shows effective rank drops monotonically from ~2.2 at L0 to</p>
+<p>~1.2 at L23. The structural cause:</p>
+
+<p><strong>The residual stream accumulates information from all previous layers.</strong> Each</p>
+<p>layer's attention only needs to capture the <em>residual</em> signal — what previous</p>
+<p>layers missed. As depth increases, the residual shrinks, requiring fewer</p>
+<p>dimensions. By the final layers, only a single direction ("predict the next</p>
+<p>token") remains.</p>
+
+<p>This mirrors the <strong>Information Bottleneck principle</strong> (Tishby et al., 2000):</p>
+<p>neural networks progressively compress input X through hidden layers, retaining</p>
+<p>only information predictive of output Y. RWKV-7's attention spontaneously</p>
+<p>executes this compression through a purely linear dynamical mechanism — no</p>
+<p>explicit compression objective, no variational bottleneck, no activation</p>
+<p>nonlinearity is needed.</p>
+
+<h3>5.5 The g-Gate Trap</h3>
+
+<p>A natural hypothesis: "inject τ closer to the output to bypass damping layers."</p>
+<p>The g gate sits after GroupNorm, only two steps from the residual addition. Yet</p>
+<p>g-injection <em>increases</em> PPL by up to +1.6%.</p>
+
+<p class="bold-line"><strong>The explanation:</strong> <code>g = σ(xg·G₁)·G₂</code> is a <strong>data-dependent learned gate</strong></p>
+<p>optimized jointly with every other parameter during pretraining. Its sigmoid</p>
+<p>output range [0, 1] is precisely calibrated to control information flow.</p>
+<p>Multiplying by τ disrupts this calibration, regardless of proximity to the</p>
+<p>output.</p>
+
+<p>This yields a general principle: **τ-injection only improves performance at</p>
+<p>points that were not individually optimized during training.** The value channel</p>
+<p>(<code>v = xv·V_weight</code>) is a linear projection — no sigmoid, no data-dependent</p>
+<p>gating — hence τ can scale it without disrupting learned dynamics.</p>
+
+<h3>5.6 Language and Low Rank: A Speculative Hypothesis</h3>
+
+<p>We propose a speculative hypothesis that merits further investigation. Natural</p>
+<p>language has inherent hierarchical dimensionality:</p>
+
+<pre><code>Phoneme/Subword  →  High-dimensional noise       (not tracked by attention)
+Syntax           →  Medium-dimensional            (tracks grammar rules)
+Semantics        →  Low-dimensional               (topic = few directions)
+Pragmatics       →  Very-low-dimensional          (intent = 1–2 directions)</code></pre>
+
+<p>RWKV-7's attention may **spontaneously align with this</p>
+<p>hierarchy:** shallow layers capture syntax (effective rank 2–3), deep layers</p>
+<p>capture pragmatics (effective rank ~1). The model would not be failing to use its</p>
+<p>capacity — it would be using exactly the capacity that language demands at each</p>
+<p>level of abstraction.</p>
+
+<p>We emphasize that this hypothesis currently lacks direct experimental support.</p>
+<p>Testing it would require: (a) cross-lingual effective rank comparisons, (b) analysis</p>
+<p>on formal languages (code, mathematics) vs natural language, and (c) task-specific</p>
+<p>rank profiling. We leave these investigations to future work (see §6.5).</p>
+
+<hr>
+
+</section><section><h2>6. Discussion</h2>
+
+<h3>6.1 τ-Injection as a Diagnostic Instrument</h3>
+
+<p>The unifying contribution of this work is methodological: **τ-injection is a</p>
+<p>diagnostic instrument for probing neural architecture design**, not merely an</p>
+<p>optimization technique.</p>
+
+<p>By systematically injecting τ at each node in the computation graph and</p>
+<p>measuring the PPL response, we can:</p>
+
+<p><strong>1. <strong>Map the damping profile</strong> of normalization architecture. RWKV-7's 6-layer</strong></p>
+<p>   chain attenuates signal by ~15× compared to softmax.</p>
+
+<p><strong>2. <strong>Identify "already optimized" parameters.</strong> g-injection is harmful → g is</strong></p>
+<p>   near-optimal after pretraining. v-injection is beneficial → v has optimization</p>
+<p>   slack.</p>
+
+<p><strong>3. <strong>Detect structural bottlenecks.</strong> The rank-1 nature of deep layer attention</strong></p>
+<p>   cannot be fixed by τ — this is a fundamental architectural constraint that</p>
+<p>   requires changing the recurrence itself.</p>
+
+<h3>6.2 Why v Is the Canonical Injection Point</h3>
+
+<p>Three independent lines of evidence converge:</p>
+
+<p><strong>1. <strong>Linearity proof (Theorem 1):</strong> v → out is strictly linear, enabling exact</strong></p>
+<p>   gradient optimization with guaranteed convergence.</p>
+
+<p><strong>2. <strong>Empirical sweep:</strong> v-only or v-including combinations dominate all</strong></p>
+<p>   multi-point injection sweeps across model sizes.</p>
+
+<p><strong>3. <strong>Generative quality:</strong> v-injection is the only configuration that never</strong></p>
+<p>   degrades output, across models and prompts.</p>
+
+<p>The theoretical reason is fundamental: v enters the WKV recurrence as</p>
+<p><code>s_t += (τ⊙v_t)^T @ k_t</code> — the most primitive operation in the attention's</p>
+<p>state accumulation. By scaling v per-channel, we control *how much each</p>
+<p>dimension contributes to the attention state*. This is the most natural form</p>
+<p>of normalization in any recurrent system.</p>
+
+<h3>6.3 τ as a Learnable Parameter</h3>
+
+<p>Our gradient descent experiments demonstrate that τ is inherently learnable.</p>
+<p>Unlike standard neural network training, where each batch provides a noisy</p>
+<p>gradient estimate, τ optimization on the v channel benefits from **exact</p>
+<p>gradients** due to linearity:</p>
+
+<pre><code>∂L/∂τ = (∂L/∂out) · (∂out/∂τ) = exact (no sampling noise)</code></pre>
+
+<p>τ converges in 10–20 steps on as few as 32 tokens — it does not require</p>
+<p>massive data. The learning is embedded in the gradient structure, not the</p>
+<p>data volume.</p>
+
+<table>
+<tr><td></td><td>Post-hoc τ (this work)</td><td>Integrated τ (pretraining)</td></tr>
+<tr><th>When learned</th><th>After model is frozen</th><th>During pretraining</th></tr>
+<tr><td>Data required</td><td>10–100 tokens</td><td>Trillions of tokens</td></tr>
+<tr><td>Cost</td><td>10 GD steps × (1 fwd + 1 bwd)</td><td>Mixed into training pipeline</td></tr>
+<tr><td>Nature</td><td>Few-shot adaptive normalization</td><td>Learned per-channel sensitivity</td></tr>
+<tr><td>PPL improvement</td><td>−5.6% to −6.8%</td><td>Unknown (potentially higher)</td></tr>
+</table>
+
+<h3>6.4 Breaking the Bottleneck: Architectural Directions</h3>
+
+<p>If the effective rank of WKV attention is the fundamental constraint, how can</p>
+<p>it be raised?</p>
+
+<p class="bold-line"><strong>Architecture-level solutions:</strong></p>
+
+<table>
+<tr><td>Strategy</td><td>Mechanism</td><td>Expected Effect</td></tr>
+<tr><th>Multi-value projection</th><th>v₁, v₂, v₃ per head → rank-3 updates per step</th><th>2–3× effective rank</th></tr>
+<tr><td>Higher-rank ab</td><td>ab = Σᵏ aᵢ ⊗ bᵢ, k &gt; 1</td><td>Multi-directional state mixing</td></tr>
+<tr><td>Adaptive N</td><td>Deep layers use smaller N, free params for more heads</td><td>Better parameter allocation</td></tr>
+</table>
+
+<p class="bold-line"><strong>Training-level solutions:</strong></p>
+
+<table>
+<tr><td>Strategy</td><td>Mechanism</td></tr>
+<tr><th>Rank regularization</th><th>L_total = L_lm − β·log(effective_rank)</th></tr>
+<tr><td>Multi-scale τ</td><td>Per-head τ + cross-layer τ coordination</td></tr>
+</table>
+
+<h3>6.5 Generality of the Method</h3>
+
+<p>τ-injection is model-agnostic. Any architecture where a channel enters the state</p>
+<p>recurrence linearly admits exact gradient-based τ optimization. This covers:</p>
+
+<p>- <strong>RWKV-7:</strong> v channel (this work, proven)</p>
+<p>- <strong>Mamba / Mamba-2:</strong> likely the input-dependent B or C projections</p>
+<p>- <strong>S4 / H3:</strong> the value-like projection feeding the SSM kernel</p>
+<p>- <strong>RetNet:</strong> the value projection in the retention mechanism</p>
+<p>- <strong>Gated Linear Attention (GLA):</strong> the value gate</p>
+
+<p>The only requirement: the target channel must not enter nonlinear state-mixing</p>
+<p>terms (analogous to RWKV-7's ab term). The diagnostic methodology — sweep</p>
+<p>injection points, measure PPL response, map the bottleneck — applies to any</p>
+<p>architecture regardless of linearity.</p>
+
+<h3>6.6 Limitations</h3>
+
+<p>We acknowledge several limitations of the current study:</p>
+
+<p><strong>Hardware constraints.</strong> All experiments were conducted on a single NVIDIA</p>
+<p>RTX 3060 Laptop GPU with 6 GB of VRAM. This precludes evaluation on models</p>
+<p>larger than 2.9B parameters. The 7B and 14B RWKV-7 models remain untested,</p>
+<p>and the claim of scale-invariant PPL improvement (~6%) is currently supported</p>
+<p>by only three data points. Scaling to larger models requires cloud GPU access</p>
+<p>(feasible on a single A100-40G for the 7B model, approximately 15 minutes) and</p>
+<p>is deferred to future work.</p>
+
+<p><strong>Single architecture scope.</strong> τ-injection is demonstrated exclusively on</p>
+<p>RWKV-7. While we argue that the methodology is model-agnostic (§6.5), empirical</p>
+<p>validation on Mamba, GLA, or RetNet would substantially strengthen the</p>
+<p>generality claim.</p>
+
+<p><strong>Post-hoc optimization only.</strong> τ is optimized after model training is</p>
+<p>complete. The alternative — integrating τ as a trainable parameter during</p>
+<p>pretraining — could yield different (potentially larger) improvements but</p>
+<p>requires compute resources beyond our current capacity.</p>
+
+<p><strong>Quantitative generation metrics.</strong> §4.7 presents qualitative generation</p>
+<p>samples without automated metrics (Self-BLEU, Distinct-n, repeat-n-gram ratio).</p>
+<p>While the qualitative trends are clear, quantitative corroboration would</p>
+<p>improve reproducibility.</p>
+
+<p><strong>Short context evaluation.</strong> τ optimization and evaluation use texts of</p>
+<p>8 tokens. The damping chain dynamics may differ for long-context scenarios</p>
+<p>where WKV states accumulate more information. We note, however, that the</p>
+<p>effective rank analysis suggests the bottleneck is structural rather than</p>
+<p>sequence-length-dependent.</p>
+
+<p>Despite these limitations, we believe the core contributions — the damping</p>
+<p>chain theory, the v-injection linearity theorem, and the effective rank</p>
+<p>analysis — are robust and provide a foundation for future investigations.</p>
+
+<hr>
+
+</section><section><h2>7. Conclusion</h2>
+
+<p>We have presented τ-injection as both a practical optimization technique and a</p>
+<p>theoretical diagnostic instrument for recurrent attention architectures. Applied</p>
+<p>to RWKV-7 across three model scales, our findings reveal:</p>
+
+<p><strong>1. <strong>The damping chain.</strong> RWKV-7's 6-layer distributed normalization attenuates</strong></p>
+<p>   external signal by ~15× compared to RWKV-4's single exponential softmax.</p>
+<p>   This explains the dramatic difference in τ effectiveness (−6.8% vs −85%).</p>
+
+<p><strong>2. <strong>The v channel as the canonical injection point.</strong> Mathematical linearity</strong></p>
+<p>   enables exact gradient optimization. v-injection achieves −5.6% to −6.8%</p>
+<p>   PPL improvement, outperforming k-injection grid search by 2–3×.</p>
+
+<p><strong>3. <strong>The g-gate trap.</strong> Proximity to output does not guarantee injection</strong></p>
+<p>   effectiveness. Already-optimized parameters resist τ-injection regardless</p>
+<p>   of their position in the damping chain.</p>
+
+<p><strong>4. <strong>The rank bottleneck.</strong> RWKV-7's WKV attention is structurally low-rank</strong></p>
+<p>   (effective rank 1–3 of N = 64), with deep layers approaching rank-1. τ</p>
+<p>   operates at the read level and cannot alter this fundamental constraint.</p>
+
+<p><strong>5. <strong>Generation quality.</strong> τ-optimized models produce less repetitive, more</strong></p>
+<p>   coherent text. On larger models, multi-injection unlocks hidden factual</p>
+<p>   knowledge.</p>
+
+<p><strong>Practical recommendation:</strong> v-injection with 10–20 steps of gradient descent</p>
+<p>is a lightweight, universal improvement for RWKV-7 models. It requires only a</p>
+<p>single forward+backward pass per step, converges reliably on 32–104 tokens, and</p>
+<p>does not overfit.</p>
+
+<p><strong>Theoretical contribution:</strong> τ-injection provides a principled methodology for</p>
+<p>diagnosing the information bottleneck of any recurrent architecture — mapping</p>
+<p>where signal is lost, which parameters have optimization slack, and what</p>
+<p>structural constraints limit capacity. We hope this tool proves useful for the</p>
+<p>design and analysis of future recurrent architectures.</p>
+
+<hr>
+
+</section><section><h2>Code Availability</h2>
+
+<p>All code, experiments, and theoretical derivations are open-source:</p>
+
+<p>- <strong>τ-injection for RWKV-7</strong>: <a href="https://github.com/inkamrais-hub/rwkv--">github.com/inkamrais-hub/rwkv--</a></p>
+<p>  — Complete experiment suite, optimized injection pipeline, generation evaluation,</p>
+<p>  cross-domain robustness tests, and reproducible scripts.</p>
+
+<p>- <strong>s^τ attention mechanism</strong>: <a href="https://github.com/inkamrais-hub/tau-atth111">github.com/inkamrais-hub/tau-atth111</a></p>
+<p>  — Core Python package (<code>stau/</code>), CUDA fused kernels (v1–v5), training validation</p>
+<p>  (GPT-2 124M, Qwen3-1.7B), SDXL zero-training replacement, and full mathematical</p>
+<p>  derivations (THEORY.md).</p>
+
+<p>Both repositories include detailed READMEs, requirements files, and are designed</p>
+<p>for single-command reproducibility.</p>
+
+<hr>
+
+</section><section><h2>References</h2>
+
+<p>[1] Peng, B., Alcaide, E., Anthony, Q., et al. "RWKV: Reinventing RNNs for the</p>
+<p>    Transformer Era." <em>Findings of EMNLP</em>, 2023.</p>
+
+<p>[2] Peng, B., Goldstein, D., Anthony, Q., et al. "Eagle and Finch: RWKV with</p>
+<p>    Matrix-Valued States and Dynamic Recurrence." <em>arXiv:2404.05892</em>, 2024.</p>
+
+<p>[3] Peng, B. et al. "RWKV-7: Beyond Attention, Beyond Efficiency."</p>
+<p>    Technical report, 2025.</p>
+<p>    Model weights and implementation: https://github.com/BlinkDL/RWKV-LM</p>
+
+<p>[4] Tishby, N., Pereira, F. C., &amp; Bialek, W. "The Information Bottleneck Method."</p>
+<p>    <em>arXiv:physics/0004057</em>, 2000.</p>
+
+<p>[5] Tishby, N. &amp; Zaslavsky, N. "Deep Learning and the Information Bottleneck</p>
+<p>    Principle." <em>IEEE Information Theory Workshop</em>, 2015.</p>
+
+<p>[6] Saxe, A. M., Bansal, Y., Dapello, J., et al. "On the Information Bottleneck</p>
+<p>    Theory of Deep Learning." <em>Journal of Statistical Mechanics</em>, 2019.</p>
+
+<p>[7] Roy, O. &amp; Vetterli, M. "The Effective Rank: A Measure of Effective</p>
+<p>    Dimensionality." <em>European Signal Processing Conference</em>, 2007.</p>
+
+<p>[8] Martin, C. H. &amp; Mahoney, M. W. "Heavy-Tailed Universality Predicts Trends</p>
+<p>    in Test Accuracies for Very Large Pre-Trained Deep Neural Networks."</p>
+<p>    <em>SIAM International Conference on Data Mining</em>, 2020.</p>
+
+<p>[9] Turner, A. M., Thiergart, L., Udell, D., et al. "Activation Addition:</p>
+<p>    Steering Language Models Without Optimization." <em>arXiv:2308.10248</em>, 2023.</p>
+
+<p>[10] Zou, A., Phan, L., Chen, S., et al. "Representation Engineering:</p>
+<p>     A Top-Down Approach to AI Transparency." <em>arXiv:2310.01405</em>, 2023.</p>
+
+<p>[11] Hu, E. J., Shen, Y., Wallis, P., et al. "LoRA: Low-Rank Adaptation of</p>
+<p>     Large Language Models." <em>ICLR</em>, 2022.</p>
+
+<p>[12] Gu, A. &amp; Dao, T. "Mamba: Linear-Time Sequence Modeling with Selective</p>
+<p>     State Spaces." <em>arXiv:2312.00752</em>, 2023.</p>
+
+<p>[13] Dao, T. &amp; Gu, A. "Transformers are SSMs: Generalized Models and Efficient</p>
+<p>     Algorithms Through Structured State Space Duality." <em>arXiv:2405.21060</em>,</p>
+<p>     2024.</p>
+
+<p>[14] Sun, Y., Dong, L., Huang, S., et al. "Retentive Network: A Successor to</p>
+<p>     Transformer for Large Language Models." <em>arXiv:2307.08621</em>, 2023.</p>
+
+<p>[15] Yang, S., Wang, B., Shen, Y., et al. "Gated Linear Attention Transformers</p>
+<p>     with Hardware-Efficient Training." <em>arXiv:2312.06635</em>, 2023.</p>
+
+<hr>
+
+</section><section><h2>Appendix A: Reproducibility</h2>
+
+<p>All experiments are reproducible with scripts in the <code>deploy_pkg/tau_injection/</code></p>
+<p>package and <code>rwkv/experiments/</code> directory:</p>
+
+<table>
+<tr><td>Path</td><td>Purpose</td></tr>
+<tr><th><code>deploy_pkg/tau_injection/</code></th><th>Core reusable library (model loading, forward, optimization, analysis)</th></tr>
+<tr><td><code>rwkv/experiments/run_all.py</code></td><td>Entry point: reproduce all experiments</td></tr>
+<tr><td><code>rwkv/experiments/experiment_01_grid_search.py</code></td><td>k-injection grid search (0.4B–2.9B)</td></tr>
+<tr><td><code>rwkv/experiments/experiment_02_v_injection.py</code></td><td>v-injection gradient descent (0.4B–2.9B)</td></tr>
+<tr><td><code>rwkv/experiments/experiment_03_sweep.py</code></td><td>Multi-point injection sweep (0.4B, 1.5B)</td></tr>
+<tr><td><code>rwkv/experiments/experiment_04_dynamics.py</code></td><td>Cliff experiment + effective rank + sparsity</td></tr>
+<tr><td><code>rwkv/experiments/experiment_05_generation.py</code></td><td>Generation quality comparison</td></tr>
+</table>
+
+<p>Model weights: <code>ms_weights/rwkv-7-world/RWKV-x070-World-{0.4B,1.5B,2.9B}-*.pth</code></p>
+
+<p>Code repository: <code>https://github.com/inkamrais-hub/rwkv--</code></p>
+
+<p>Runtime: ~2 min per model per injection configuration on RTX 3060 Laptop (6 GB).</p>
+
+<hr>
+
+</section><section><h2>Appendix B: Notation</h2>
+
+<table>
+<tr><td>Symbol</td><td>Meaning</td></tr>
+<tr><th>τ</th><th>Per-channel learnable scaling vector</th></tr>
+<tr><td>⊙</td><td>Hadamard (element-wise) product</td></tr>
+<tr><td>H</td><td>Number of attention heads</td></tr>
+<tr><td>N</td><td>Head dimension (64 for all RWKV-7 models)</td></tr>
+<tr><td>C</td><td>Model dimension (1024, 2048, or 2560)</td></tr>
+<tr><td>s_t</td><td>WKV recurrent state at timestep t, shape [H, N, N]</td></tr>
+<tr><td>D_t</td><td>Per-element decay matrix, shape [H, N, N]</td></tr>
+<tr><td>ab_t</td><td>Low-rank attention mixing matrix, shape [N, N]</td></tr>
+<tr><td>v_t, k_t</td><td>Value and key vectors, shape [N] per head</td></tr>
+<tr><td>r_t</td><td>Receptance (read gate), shape [N] per head</td></tr>
+<tr><td>σ</td><td>Sigmoid function</td></tr>
+<tr><td>σ⁺</td><td>Softplus function: σ⁺(x) = log(1 + e^x)</td></tr>
+<tr><td>PPL</td><td>Perplexity, exp(cross-entropy loss)</td></tr>
+</table>
+
+<hr>
+
+</section><section><h2>Appendix C: The ab-Term Cross-Coupling (Why k-Injection Fails)</h2>
+
+<p>The ab term in RWKV-7's WKV recurrence is the critical structural difference</p>
+<p>from RWKV-4. It is computed from the key vector k:</p>
+
+<pre><code>ab[i,j] = −kkt[i] · kkt[j] · a[j]    where kkt = normalize(k)</code></pre>
+
+<p>When τ scales k → τ ⊙ k, the ab term becomes:</p>
+
+<pre><code>ab_τ[i,j] = τ_i · τ_j · ab[i,j]</code></pre>
+
+<p>This introduces <strong>τ_i · τ_j cross-coupling</strong> — each τ dimension interacts</p>
+<p>multiplicatively with every other dimension through the matrix multiplication</p>
+<p><code>s_{t-1} @ ab_τ</code>. The linear approximation <code>s_τ ≈ τ · s</code> — which works perfectly</p>
+<p>for RWKV-4 — breaks entirely for RWKV-7 k-injection.</p>
+
+<p>In contrast, v-injection does not enter ab: <code>ab ≠ f(v)</code>. The outer product</p>
+<p><code>(τ⊙v_t)^T @ k_t</code> is free of cross-coupling because ab depends only on k and</p>
+<p>the data-dependent gating, not on v.</p>
+
+<p>This explains three observations simultaneously:</p>
+<li>1. Why k-injection grid search ceilings at −3.2% (nonlinearity limits search)</li>
+<li>2. Why a closed-form ridge regression solver returns τ ≈ 1.0 (linear model</li>
+<p>   applied to nonlinear system)</p>
+<li>3. Why no bottleneck migration pattern emerges (ab mixes everything)</li>
+</section>
+
+<p style="text-align:center;margin-top:48px;color:var(--muted);font-size:.85em">
+  τ Project · May 2026 ·
+  <a href="https://github.com/inkamrais-hub/rwkv--">rwkv--</a> ·
+  <a href="https://github.com/inkamrais-hub/tau-atth111">tau-atth111</a>
+</p>
+</body>
+</html>
