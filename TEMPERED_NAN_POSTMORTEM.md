@@ -1,3 +1,4 @@
+<!-- KEEP: Tempered Softmax 事后分析 2026-04-30 -->
 # Tempered Softmax τ 梯度死锁：事后分析
 
 > **生成**: 2026-04-30 | **关联**: HANDOVER.md | **状态**: 定论
