@@ -3,7 +3,11 @@
 > **τ 项目组** · 2026 年 5 月
 >
 > 全部实验在单张 NVIDIA RTX 3060 Laptop GPU (6 GB 显存) 上完成。
-> 代码仓库：`https://github.com/inkamrais-hub/rwkv--`
+>
+> **代码仓库**：[github.com/inkamrais-hub/rwkv--](https://github.com/inkamrais-hub/rwkv--)
+> （τ-injection 实验与分析） ·
+> [github.com/inkamrais-hub/tau-atth111](https://github.com/inkamrais-hub/tau-atth111)
+> （s^τ 注意力机制与 CUDA 算子）
 
 ---
 
@@ -555,6 +559,21 @@ RWKV-7 的注意力可能**自发与这一层级对齐**：浅层捕获句法（
 **实用建议：** 10–20 步梯度下降的 v 注入是 RWKV-7 模型的轻量级、通用改善方案。它每步仅需单次前向+反向传播，在 32–104 token 上可靠收敛，且不过拟合。
 
 **理论贡献：** τ 注入为诊断任何循环架构的信息瓶颈提供了原则性方法学——绘制信号在何处丢失、哪些参数有优化松弛、以及哪些结构约束限制容量。我们希望这一工具有助于未来循环架构的设计和分析。
+
+---
+
+## 代码可用性
+
+所有代码、实验和理论推导均已开源：
+
+- **RWKV-7 τ-injection**：[github.com/inkamrais-hub/rwkv--](https://github.com/inkamrais-hub/rwkv--)
+  — 完整实验套件、优化注入管线、生成质量评估、跨域鲁棒性测试及可复现脚本。
+
+- **s^τ 注意力机制**：[github.com/inkamrais-hub/tau-atth111](https://github.com/inkamrais-hub/tau-atth111)
+  — 核心 Python 包（`stau/`）、CUDA 融合算子（v1–v5）、训练验证（GPT-2 124M、Qwen3-1.7B）、
+  SDXL 零训练替换及完整数学推导（THEORY.md）。
+
+两个仓库均包含详细 README、依赖文件，并支持单命令复现。
 
 ---
 

@@ -3,7 +3,11 @@
 > **τ Project** · May 2026
 >
 > All experiments on a single NVIDIA RTX 3060 Laptop GPU (6 GB VRAM).
-> Code and logs: `rwkv/` directory.
+>
+> **Code**: [github.com/inkamrais-hub/rwkv--](https://github.com/inkamrais-hub/rwkv--)
+> (τ-injection experiments & analysis) ·
+> [github.com/inkamrais-hub/tau-atth111](https://github.com/inkamrais-hub/tau-atth111)
+> (s^τ attention mechanism & CUDA kernels)
 
 ---
 
@@ -825,6 +829,24 @@ diagnosing the information bottleneck of any recurrent architecture — mapping
 where signal is lost, which parameters have optimization slack, and what
 structural constraints limit capacity. We hope this tool proves useful for the
 design and analysis of future recurrent architectures.
+
+---
+
+## Code Availability
+
+All code, experiments, and theoretical derivations are open-source:
+
+- **τ-injection for RWKV-7**: [github.com/inkamrais-hub/rwkv--](https://github.com/inkamrais-hub/rwkv--)
+  — Complete experiment suite, optimized injection pipeline, generation evaluation,
+  cross-domain robustness tests, and reproducible scripts.
+
+- **s^τ attention mechanism**: [github.com/inkamrais-hub/tau-atth111](https://github.com/inkamrais-hub/tau-atth111)
+  — Core Python package (`stau/`), CUDA fused kernels (v1–v5), training validation
+  (GPT-2 124M, Qwen3-1.7B), SDXL zero-training replacement, and full mathematical
+  derivations (THEORY.md).
+
+Both repositories include detailed READMEs, requirements files, and are designed
+for single-command reproducibility.
 
 ---
 
