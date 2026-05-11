@@ -7,34 +7,62 @@ __pycache__/
 .vscode/
 .trae/
 
-# Experiment outputs (huge PNGs, keep source code)
+# Experiment outputs (large binaries)
 *.png
 *.gif
 *.pt
 *.tar.gz
+*.onnx
 
 # Training outputs
 *.log
 results*.json
 phase*.json
 
-# Model cache
+# Data / model cache (large, remote-downloaded)
+data/
 modelscope_cache/
-
-# Project assets (large training data)
+ms_weights/
 project_assets/
+minimind-base/
+minimind-o/
 
-# OS junk
-.DS_Store
-Thumbs.db
+# Benchmark results (generated locally)
+stau_results/
+results_5090/
+
+# Dev artifacts (old projects, experiments, docs)
+evidence/
+figures/
+games/
+images/
+docs/
+tau-12121/
+audio-τ-epx/
+τ-minimind-o/
+Fτrwkvdeploy/
+Qwen3.5-0.8B/
 
 # Secrets / local config
 scripts/hy_config.py
 scripts/autodl_api.py
-
-# Temporary files at root
-attn_check*.txt
 current_instance.json
+
+# Temporary / benchmark output files
+attn_check*.txt
+*_log.txt
+bench_*.txt
+smoke_*.txt
+*_out.txt
+debug_*.txt
+*_result.txt
+bench_*.json
+grid_*.json
+*_test.json
+
+# OS junk
+.DS_Store
+Thumbs.db
 
 # But keep these
 !experiments/s_tau_viz.html
